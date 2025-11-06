@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>车牌注册示例</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>车牌注册管理</h1>
+    </header>
+    <main>
+      <section id="auth-section" class="card">
+        <h2>用户注册/登录</h2>
+        <div class="tabs">
+          <button id="register-tab" class="active">注册</button>
+          <button id="login-tab">登录</button>
+        </div>
+        <form id="register-form" class="form active">
+          <label>
+            用户名
+            <input type="text" id="register-username" required />
+          </label>
+          <label>
+            密码
+            <input type="password" id="register-password" required />
+          </label>
+          <button type="submit">注册</button>
+          <p class="form-tip">已注册？点击上方“登录”标签。</p>
+        </form>
+        <form id="login-form" class="form">
+          <label>
+            用户名
+            <input type="text" id="login-username" required />
+          </label>
+          <label>
+            密码
+            <input type="password" id="login-password" required />
+          </label>
+          <button type="submit">登录</button>
+          <p class="form-tip">还没有账号？点击上方“注册”标签。</p>
+        </form>
+        <p id="auth-message" class="message" role="alert"></p>
+      </section>
+
+      <section id="license-section" class="card hidden">
+        <h2>车牌注册</h2>
+        <p id="welcome-message"></p>
+        <form id="license-form" class="form">
+          <label>
+            车牌号码
+            <input
+              type="text"
+              id="license-number"
+              placeholder="例：京A12345"
+              pattern="^[\u4e00-\u9fa5][A-Z][A-Z0-9]{5}$"
+              title="请输入类似“京A12345”的车牌号码"
+              required
+            />
+          </label>
+          <label>
+            车辆型号
+            <input type="text" id="vehicle-model" required />
+          </label>
+          <button type="submit">提交车牌</button>
+        </form>
+        <p id="license-message" class="message" role="alert"></p>
+
+        <div id="license-list-container">
+          <h3>已注册车牌</h3>
+          <ul id="license-list"></ul>
+        </div>
+        <button id="logout-button" class="secondary">退出登录</button>
+      </section>
+    </main>
+
+    <footer>
+      <p>示例应用，仅用于演示用户身份验证和车牌注册流程。</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,159 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  background-color: #f5f7fb;
+  color: #1f2937;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header,
+footer {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+main {
+  flex: 1;
+  padding: 2rem 1rem 3rem;
+  display: grid;
+  gap: 2rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+}
+
+.tabs {
+  display: inline-flex;
+  border: 1px solid #cbd5f5;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.tabs button {
+  border: none;
+  background: transparent;
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #475569;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tabs button.active,
+.tabs button:hover {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.form {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form.active {
+  display: flex;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+input {
+  margin-top: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
+}
+
+button.secondary {
+  background: #64748b;
+}
+
+.message {
+  margin-top: 1rem;
+  min-height: 1.25rem;
+  font-size: 0.95rem;
+}
+
+.message.success {
+  color: #059669;
+}
+
+.message.error {
+  color: #dc2626;
+}
+
+.hidden {
+  display: none;
+}
+
+#license-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#license-list li {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #1e293b;
+}
+
+@media (max-width: 768px) {
+  main {
+    padding: 1.5rem 1rem 2rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+}
