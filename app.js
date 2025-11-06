@@ -15,6 +15,8 @@ const licenseMessage = document.getElementById("license-message");
 const welcomeMessage = document.getElementById("welcome-message");
 const licenseList = document.getElementById("license-list");
 const logoutButton = document.getElementById("logout-button");
+const navToggle = document.querySelector(".nav-toggle");
+const navLinks = document.querySelector(".nav-links");
 
 let currentUser = null;
 
@@ -218,6 +220,19 @@ licenseForm.addEventListener("submit", handleLicenseSubmit);
 logoutButton.addEventListener("click", exitLicenseMode);
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (navToggle && navLinks) {
+    navToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      navLinks.classList.toggle("open");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!navLinks.contains(event.target) && event.target !== navToggle) {
+        navLinks.classList.remove("open");
+      }
+    });
+  }
+
   const username = getSession();
   if (!username) {
     return;

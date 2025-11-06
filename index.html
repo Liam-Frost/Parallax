@@ -7,11 +7,26 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header>
-      <h1>车牌注册管理</h1>
+    <header class="global-header">
+      <nav class="nav-bar" aria-label="主导航">
+        <a class="brand" href="#"></a>
+        <button class="nav-toggle" aria-label="展开导航">☰</button>
+        <ul class="nav-links">
+          <li><a href="#auth-section">账户</a></li>
+          <li><a href="#license-section">车牌</a></li>
+          <li><a href="#footer">关于</a></li>
+        </ul>
+      </nav>
+      <div class="hero">
+        <p class="hero-eyebrow">车牌注册体验</p>
+        <h1 class="hero-title">让认证和登记像开机一样顺滑</h1>
+        <p class="hero-subtitle">
+          轻盈的界面，直观的流程。注册、登录与车牌管理，都以苹果风格呈现。
+        </p>
+      </div>
     </header>
     <main>
-      <section id="auth-section" class="card">
+      <section id="auth-section" class="card glass-panel">
         <h2>用户注册/登录</h2>
         <div class="tabs">
           <button id="register-tab" class="active">注册</button>
@@ -44,7 +59,7 @@
         <p id="auth-message" class="message" role="alert"></p>
       </section>
 
-      <section id="license-section" class="card hidden">
+      <section id="license-section" class="card glass-panel hidden">
         <h2>车牌注册</h2>
         <p id="welcome-message"></p>
         <form id="license-form" class="form">
@@ -75,7 +90,7 @@
       </section>
     </main>
 
-    <footer>
+    <footer id="footer">
       <p>示例应用，仅用于演示用户身份验证和车牌注册流程。</p>
     </footer>
 
