@@ -33,14 +33,10 @@ const yearSelect = document.getElementById("register-birth-year");
 const captchaInput = document.getElementById("register-captcha");
 const captchaDisplay = document.getElementById("captcha-display");
 const refreshCaptchaButton = document.getElementById("refresh-captcha");
-const assistiveCaptchaButton = document.getElementById("assistive-captcha");
 const resetIdentifierInput = document.getElementById("reset-identifier");
 const resetCaptchaInput = document.getElementById("reset-captcha-input");
 const resetCaptchaDisplay = document.getElementById("reset-captcha-display");
 const resetRefreshCaptchaButton = document.getElementById("reset-refresh-captcha");
-const resetAssistiveCaptchaButton = document.getElementById(
-  "reset-assistive-captcha"
-);
 
 let currentUser = null;
 let loginStage = "identifier";
@@ -53,7 +49,7 @@ function readUsers() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.users)) || [];
   } catch (error) {
-    console.warn("读取用户数据失败", error);
+    console.warn("Failed to read user data", error);
     return [];
   }
 }
@@ -66,7 +62,7 @@ function readLicenses() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEYS.licenses)) || {};
   } catch (error) {
-    console.warn("读取车牌数据失败", error);
+    console.warn("Failed to read license data", error);
     return {};
   }
 }
@@ -245,32 +241,14 @@ function generateCaptcha(context = "register") {
 
 function setupCaptchaControls() {
   const controls = [
-    {
-      refresh: refreshCaptchaButton,
-      assistive: assistiveCaptchaButton,
-      context: "register",
-    },
-    {
-      refresh: resetRefreshCaptchaButton,
-      assistive: resetAssistiveCaptchaButton,
-      context: "reset",
-    },
+    { refresh: refreshCaptchaButton, context: "register" },
+    { refresh: resetRefreshCaptchaButton, context: "reset" },
   ];
 
-  controls.forEach(({ refresh, assistive, context }) => {
+  controls.forEach(({ refresh, context }) => {
     if (refresh) {
       refresh.addEventListener("click", () => {
         generateCaptcha(context);
-      });
-    }
-
-    if (assistive) {
-      assistive.addEventListener("click", () => {
-        showMessage(
-          authMessage,
-          "Audio support is not available in this demo interface.",
-          "error"
-        );
       });
     }
   });
@@ -382,44 +360,44 @@ function handleRegister(event) {
   const captchaValue = captchaInput?.value.trim() || "";
 
   if (!country || !firstName || !lastName) {
-    showMessage(authMessage, "请完整填写姓名和国家/地区信息。", "error");
+    showMessage(authMessage, "Please complete your name and country details.", "error");
     return;
   }
 
   if (!month || !day || !year) {
-    showMessage(authMessage, "请选择完整的出生日期。", "error");
+    showMessage(authMessage, "Please select your full birth date.", "error");
     return;
   }
 
   const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
   if (!emailPattern.test(email || "")) {
-    showMessage(authMessage, "请输入有效的邮箱地址。", "error");
+    showMessage(authMessage, "Enter a valid email address.", "error");
     return;
   }
 
   if (!password || password.length < 8) {
-    showMessage(authMessage, "密码至少需要 8 个字符。", "error");
+    showMessage(authMessage, "Password must be at least 8 characters.", "error");
     return;
   }
 
   if (password !== confirmPassword) {
-    showMessage(authMessage, "两次输入的密码不一致。", "error");
+    showMessage(authMessage, "Passwords do not match.", "error");
     return;
   }
 
   const phoneDigits = (phoneRaw || "").replace(/\D/g, "");
   if (!phoneCountry || phoneDigits.length < 5) {
-    showMessage(authMessage, "请输入有效的手机号和区号。", "error");
+    showMessage(authMessage, "Enter a valid phone number and country code.", "error");
     return;
   }
 
   if (!captchaValue) {
-    showMessage(authMessage, "请输入验证码。", "error");
+    showMessage(authMessage, "Enter the verification code.", "error");
     return;
   }
 
   if (captchaValue.toUpperCase() !== (captchaState.register || "")) {
-    showMessage(authMessage, "验证码不正确，请重试。", "error");
+    showMessage(authMessage, "Incorrect verification code. Please try again.", "error");
     generateCaptcha("register");
     return;
   }
@@ -427,7 +405,7 @@ function handleRegister(event) {
   const users = readUsers();
   const lowerEmail = (email || "").toLowerCase();
   if (users.some((user) => user.email?.toLowerCase() === lowerEmail)) {
-    showMessage(authMessage, "该邮箱已注册，请直接登录。", "error");
+    showMessage(authMessage, "That email is already registered. Please sign in instead.", "error");
     return;
   }
 
@@ -442,7 +420,7 @@ function handleRegister(event) {
       return storedDigits && storedCountry + storedDigits === phoneSignature;
     })
   ) {
-    showMessage(authMessage, "该手机号已注册，请直接登录。", "error");
+    showMessage(authMessage, "That phone number is already registered. Please sign in instead.", "error");
     return;
   }
 
@@ -466,7 +444,7 @@ function handleRegister(event) {
   saveUsers(users);
   resetRegisterForm();
   showLoginView();
-  showMessage(authMessage, "注册成功！请登录以继续。", "success");
+  showMessage(authMessage, "Registration successful! Please sign in to continue.", "success");
 }
 
 function handleReset(event) {
@@ -476,17 +454,17 @@ function handleReset(event) {
   const captchaValue = resetCaptchaInput?.value.trim();
 
   if (!identifier) {
-    showMessage(authMessage, "请输入用于登录的邮箱或手机号。", "error");
+    showMessage(authMessage, "Enter the email address or phone number for your account.", "error");
     return;
   }
 
   if (!captchaValue) {
-    showMessage(authMessage, "请输入验证码。", "error");
+    showMessage(authMessage, "Enter the verification code.", "error");
     return;
   }
 
   if (captchaValue.toUpperCase() !== (captchaState.reset || "")) {
-    showMessage(authMessage, "验证码不正确，请重试。", "error");
+    showMessage(authMessage, "Incorrect verification code. Please try again.", "error");
     generateCaptcha("reset");
     return;
   }
@@ -514,13 +492,13 @@ function handleReset(event) {
   if (match) {
     showMessage(
       authMessage,
-      "我们已向您的联系方式发送重置密码的相关说明，请注意查收。",
+      "We've sent password reset instructions to the contact details on file.",
       "success"
     );
   } else {
     showMessage(
       authMessage,
-      "如果该信息关联 Parallax 账号，我们会发送密码重置信息。",
+      "If the information is linked to a Parallax account, we'll send reset instructions.",
       "success"
     );
   }
@@ -532,7 +510,7 @@ function handleLogin(event) {
 
   if (loginStage === "identifier") {
     if (!identifier) {
-      showMessage(authMessage, "请输入邮箱或手机号。", "error");
+      showMessage(authMessage, "Enter your email address or phone number.", "error");
       loginIdentifierInput?.focus();
       return;
     }
@@ -544,13 +522,13 @@ function handleLogin(event) {
 
   const password = loginPasswordInput?.value.trim();
   if (!identifier) {
-    showMessage(authMessage, "请输入邮箱或手机号。", "error");
+    showMessage(authMessage, "Enter your email address or phone number.", "error");
     setLoginStage("identifier");
     return;
   }
 
   if (!password) {
-    showMessage(authMessage, "请输入密码。", "error");
+    showMessage(authMessage, "Enter your password.", "error");
     loginPasswordInput?.focus();
     return;
   }
@@ -579,7 +557,7 @@ function handleLogin(event) {
   });
 
   if (!user) {
-    showMessage(authMessage, "用户名或密码错误，请重试。", "error");
+    showMessage(authMessage, "Incorrect username or password. Please try again.", "error");
     return;
   }
 
@@ -598,7 +576,7 @@ function enterLicenseMode() {
     currentUser.displayName ||
     [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ") ||
     currentUser.username;
-  welcomeMessage.textContent = `欢迎，${name}！请登记车牌信息。`;
+  welcomeMessage.textContent = `Welcome, ${name}! Please register your vehicles.`;
   showMessage(licenseMessage, "");
   refreshLicenseList();
 }
@@ -609,7 +587,7 @@ function exitLicenseMode() {
   licenseSection.classList.add("hidden");
   authShell.classList.remove("hidden");
   showLoginView();
-  showMessage(authMessage, "您已退出登录。", "success");
+  showMessage(authMessage, "You have signed out.", "success");
 }
 
 function handleLicenseSubmit(event) {
@@ -623,7 +601,7 @@ function handleLicenseSubmit(event) {
     .value.trim();
 
   if (!currentUser) {
-    showMessage(licenseMessage, "请先登录。", "error");
+    showMessage(licenseMessage, "Please sign in first.", "error");
     return;
   }
 
@@ -631,7 +609,7 @@ function handleLicenseSubmit(event) {
   const userLicenses = licenses[currentUser.username] || [];
 
   if (userLicenses.some((item) => item.licenseNumber === licenseNumber)) {
-    showMessage(licenseMessage, "该车牌已登记，无需重复提交。", "error");
+    showMessage(licenseMessage, "That license plate is already registered.", "error");
     return;
   }
 
@@ -644,7 +622,7 @@ function handleLicenseSubmit(event) {
   userLicenses.push(entry);
   licenses[currentUser.username] = userLicenses;
   saveLicenses(licenses);
-  showMessage(licenseMessage, "车牌登记成功！", "success");
+  showMessage(licenseMessage, "License plate saved successfully!", "success");
   licenseForm.reset();
   refreshLicenseList();
 }
@@ -655,7 +633,7 @@ function refreshLicenseList() {
   const userLicenses = licenses[currentUser.username] || [];
 
   if (userLicenses.length === 0) {
-    licenseList.innerHTML = "<li>暂未登记任何车牌。</li>";
+    licenseList.innerHTML = "<li>No license plates registered yet.</li>";
     return;
   }
 
@@ -667,7 +645,7 @@ function refreshLicenseList() {
       left.innerHTML = `<strong>${item.licenseNumber}</strong> - ${item.vehicleModel}`;
 
       const removeButton = document.createElement("button");
-      removeButton.textContent = "删除";
+      removeButton.textContent = "Remove";
       removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
 
       listItem.append(left, removeButton);
@@ -682,7 +660,7 @@ function removeLicense(licenseNumber) {
   licenses[currentUser.username] = updated;
   saveLicenses(licenses);
   refreshLicenseList();
-  showMessage(licenseMessage, "车牌已删除。", "success");
+  showMessage(licenseMessage, "License plate removed.", "success");
 }
 
 createAccountLinks.forEach((link) => {
