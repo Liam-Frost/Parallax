@@ -67,7 +67,114 @@ function readLicenses() {
 
 function saveLicenses(licenses) {
   localStorage.setItem(STORAGE_KEYS.licenses, JSON.stringify(licenses));
-@@ -166,112 +178,163 @@ function populateBirthSelects() {
+}
+
+function setSession(user) {
+  if (user) {
+    localStorage.setItem(
+      STORAGE_KEYS.session,
+      JSON.stringify({ username: user.username })
+    );
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.session);
+  }
+}
+
+function getSession() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEYS.session));
+    return data?.username || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function showMessage(element, text, type = "") {
+  element.textContent = text;
+  element.classList.remove("success", "error");
+  if (type) {
+    element.classList.add(type);
+  }
+}
+
+function updateBirthDayOptions(preserveSelection = true) {
+  if (!daySelect) return;
+  const previousValue = preserveSelection ? daySelect.value : "";
+  const selectedMonth = parseInt(monthSelect?.value || "", 10);
+  const selectedYear = parseInt(yearSelect?.value || "", 10) || new Date().getFullYear();
+  let daysInMonth = 31;
+
+  if (selectedMonth) {
+    daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+  }
+
+  daySelect.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Day";
+  placeholder.disabled = true;
+  daySelect.appendChild(placeholder);
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const option = document.createElement("option");
+    option.value = String(day).padStart(2, "0");
+    option.textContent = String(day);
+    daySelect.appendChild(option);
+  }
+
+  if (preserveSelection && previousValue) {
+    daySelect.value = previousValue;
+  }
+
+  if (!daySelect.value) {
+    placeholder.selected = true;
+  }
+}
+
+function populateBirthSelects() {
+  if (!monthSelect || !daySelect || !yearSelect) return;
+
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  monthSelect.innerHTML = "";
+  const monthPlaceholder = document.createElement("option");
+  monthPlaceholder.value = "";
+  monthPlaceholder.textContent = "Month";
+  monthPlaceholder.disabled = true;
+  monthPlaceholder.selected = true;
+  monthSelect.appendChild(monthPlaceholder);
+
+  months.forEach((name, index) => {
+    const option = document.createElement("option");
+    option.value = String(index + 1).padStart(2, "0");
+    option.textContent = name;
+    monthSelect.appendChild(option);
+  });
+
+  yearSelect.innerHTML = "";
+  const yearPlaceholder = document.createElement("option");
+  yearPlaceholder.value = "";
+  yearPlaceholder.textContent = "Year";
+  yearPlaceholder.disabled = true;
+  yearPlaceholder.selected = true;
+  yearSelect.appendChild(yearPlaceholder);
+
+  const currentYear = new Date().getFullYear();
+  for (let year = currentYear; year >= currentYear - 120; year -= 1) {
+    const option = document.createElement("option");
     option.value = String(year);
     option.textContent = String(year);
     yearSelect.appendChild(option);
@@ -231,7 +338,24 @@ function handleRegister(event) {
   const phoneCountry = document
     .getElementById("register-phone-country")
     ?.value;
-@@ -296,101 +359,158 @@ function handleRegister(event) {
+  const phoneRaw = document.getElementById("register-phone")?.value.trim();
+  const contactMethod =
+    registerForm.querySelector('input[name="contact-method"]:checked')?.value ||
+    "text";
+  const captchaValue = captchaInput?.value.trim() || "";
+
+  if (!country || !firstName || !lastName) {
+    showMessage(authMessage, "请完整填写姓名和国家/地区信息。", "error");
+    return;
+  }
+
+  if (!month || !day || !year) {
+    showMessage(authMessage, "请选择完整的出生日期。", "error");
+    return;
+  }
+
+  const emailPattern = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  if (!emailPattern.test(email || "")) {
     showMessage(authMessage, "请输入有效的邮箱地址。", "error");
     return;
   }
@@ -390,7 +514,103 @@ function handleLogin(event) {
       ((storedDigits && storedDigits === phoneDigits) ||
         (combinedPhone && combinedPhone === phoneDigits));
 
-@@ -494,54 +614,63 @@ function refreshLicenseList() {
+    return usernameMatch || emailMatch || phoneMatch;
+  });
+
+  if (!user) {
+    showMessage(authMessage, "用户名或密码错误，请重试。", "error");
+    return;
+  }
+
+  currentUser = user;
+  setSession(user);
+  loginForm.reset();
+  enterLicenseMode();
+}
+
+function enterLicenseMode() {
+  if (!currentUser) return;
+  authShell.classList.add("hidden");
+  licenseSection.classList.remove("hidden");
+  const name =
+    currentUser.displayName ||
+    [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ") ||
+    currentUser.username;
+  welcomeMessage.textContent = `欢迎，${name}！请登记车牌信息。`;
+  showMessage(licenseMessage, "");
+  refreshLicenseList();
+}
+
+function exitLicenseMode() {
+  currentUser = null;
+  setSession(null);
+  licenseSection.classList.add("hidden");
+  authShell.classList.remove("hidden");
+  showLoginView();
+  showMessage(authMessage, "您已退出登录。", "success");
+}
+
+function handleLicenseSubmit(event) {
+  event.preventDefault();
+  const licenseNumber = document
+    .getElementById("license-number")
+    .value.trim()
+    .toUpperCase();
+  const vehicleModel = document
+    .getElementById("vehicle-model")
+    .value.trim();
+
+  if (!currentUser) {
+    showMessage(licenseMessage, "请先登录。", "error");
+    return;
+  }
+
+  const licenses = readLicenses();
+  const userLicenses = licenses[currentUser.username] || [];
+
+  if (userLicenses.some((item) => item.licenseNumber === licenseNumber)) {
+    showMessage(licenseMessage, "该车牌已登记，无需重复提交。", "error");
+    return;
+  }
+
+  const entry = {
+    licenseNumber,
+    vehicleModel,
+    createdAt: new Date().toISOString(),
+  };
+
+  userLicenses.push(entry);
+  licenses[currentUser.username] = userLicenses;
+  saveLicenses(licenses);
+  showMessage(licenseMessage, "车牌登记成功！", "success");
+  licenseForm.reset();
+  refreshLicenseList();
+}
+
+function refreshLicenseList() {
+  licenseList.innerHTML = "";
+  const licenses = readLicenses();
+  const userLicenses = licenses[currentUser.username] || [];
+
+  if (userLicenses.length === 0) {
+    licenseList.innerHTML = "<li>暂未登记任何车牌。</li>";
+    return;
+  }
+
+  userLicenses
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .forEach((item) => {
+      const listItem = document.createElement("li");
+      const left = document.createElement("span");
+      left.innerHTML = `<strong>${item.licenseNumber}</strong> - ${item.vehicleModel}`;
+
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "删除";
+      removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
+
+      listItem.append(left, removeButton);
+      licenseList.appendChild(listItem);
+    });
 }
 
 function removeLicense(licenseNumber) {
