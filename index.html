@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Parallax 风格登录与车牌注册</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="apple-header">
+      <nav class="apple-nav" aria-label="主导航">
+        <a class="nav-logo" href="#" aria-label="Parallax"></a>
+        <ul class="nav-links">
+          <li><a href="#">My Account</a></li>
+          <li><a href="#">My Vehicles</a></li>
+          <li><a href="#">Query</a></li>
+        </ul>
+        <div class="nav-actions" aria-hidden="true">
+          <span class="nav-icon">🔍</span>
+          <span class="nav-icon">🛍️</span>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section id="auth-shell" class="signin-shell">
+        <h1 class="signin-heading">Welcome to Parallax.</h1>
+        <section class="signin-card" aria-labelledby="form-title">
+          <h2 id="form-title" class="card-title">Sign in to Parallax Store</h2>
+          <p id="form-subtitle" class="card-subtitle">
+            Enter your email or phone number to continue.
+          </p>
+          <form id="login-form" class="auth-form active" novalidate>
+            <label class="input-field">
+              <span class="sr-only">Email or phone number</span>
+              <span class="field-icon" aria-hidden="true"></span>
+              <input
+                id="login-username"
+                type="text"
+                placeholder="Email or Phone Number"
+                autocomplete="username"
+                required
+              />
+            </label>
+            <label class="input-field">
+              <span class="sr-only">Password</span>
+              <span class="field-icon" aria-hidden="true">•</span>
+              <input
+                id="login-password"
+                type="password"
+                placeholder="Password"
+                autocomplete="current-password"
+                required
+              />
+            </label>
+            <label class="remember-row">
+              <input id="remember-me" type="checkbox" />
+              <span>Remember me</span>
+            </label>
+            <button type="submit" class="primary-button">Sign in</button>
+            <div class="link-group">
+              <a href="#" id="forgot-password" class="link">Forgot your password?</a>
+              <a href="#" id="create-account-link" class="link">Create yours now.</a>
+            </div>
+          </form>
+
+          <form id="register-form" class="auth-form" novalidate>
+            <label class="input-field">
+              <span class="sr-only">Choose a username</span>
+              <span class="field-icon" aria-hidden="true"></span>
+              <input
+                id="register-username"
+                type="text"
+                placeholder="Choose a username"
+                autocomplete="username"
+                required
+              />
+            </label>
+            <label class="input-field">
+              <span class="sr-only">Create a password</span>
+              <span class="field-icon" aria-hidden="true">•</span>
+              <input
+                id="register-password"
+                type="password"
+                placeholder="Create a password"
+                autocomplete="new-password"
+                required
+              />
+            </label>
+            <button type="submit" class="primary-button">Create account</button>
+            <div class="link-group">
+              <a href="#" id="back-to-login" class="link">Already have an account?</a>
+            </div>
+          </form>
+          <p id="auth-message" class="message" role="alert"></p>
+        </section>
+        <div class="support-box">
+          <p>
+            Need more help?
+            <a href="#" class="link">Chat now</a> or call 1-800-MY-PARALLAX.
+          </p>
+        </div>
+      </section>
+
+      <section id="license-section" class="license-panel hidden" aria-live="polite">
+        <div class="license-header">
+          <h2>车牌注册</h2>
+          <p id="welcome-message"></p>
+        </div>
+        <form id="license-form" class="license-form">
+          <label class="license-field">
+            <span>车牌号码</span>
+            <input
+              type="text"
+              id="license-number"
+              placeholder="例：京A12345"
+              pattern="^[\u4e00-\u9fa5][A-Z][A-Z0-9]{5}$"
+              title="请输入类似“京A12345”的车牌号码"
+              required
+            />
+          </label>
+          <label class="license-field">
+            <span>车辆型号</span>
+            <input type="text" id="vehicle-model" placeholder="车辆型号" required />
+          </label>
+          <button type="submit" class="primary-button">提交车牌</button>
+        </form>
+        <p id="license-message" class="message" role="alert"></p>
+        <div class="license-list-container">
+          <h3>已注册车牌</h3>
+          <ul id="license-list" class="license-list"></ul>
+        </div>
+        <button id="logout-button" class="secondary-button">退出登录</button>
+      </section>
+    </main>
+
+    <footer class="global-footer">
+      <div class="footer-links">
+        <a href="#" class="link">Terms of Use</a>
+        <a href="#" class="link">Sales and Refunds</a>
+        <a href="#" class="link">Legal</a>
+        <a href="#" class="link">Site Map</a>
+      </div>
+      <p>示例应用，仅用于演示用户身份验证和车牌注册流程。</p>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
