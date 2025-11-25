@@ -678,15 +678,18 @@ main {
   color: rgba(29, 29, 31, 0.8);
 }
 
-.license-field input {
+.license-field input,
+.license-field select {
   border-radius: 12px;
   border: 1px solid rgba(210, 210, 215, 0.7);
   padding: 14px 16px;
   font-size: 16px;
   outline: none;
+  background: #fff;
 }
 
-.license-field input:focus {
+.license-field input:focus,
+.license-field select:focus {
   border-color: rgba(0, 113, 227, 0.7);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
 }
@@ -696,26 +699,37 @@ main {
   font-size: 18px;
 }
 
-.license-list {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 12px;
+.table-wrapper {
+  margin-top: 12px;
+  overflow-x: auto;
 }
 
-.license-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-radius: 14px;
+.vehicles-table {
+  width: 100%;
+  border-collapse: collapse;
   background: rgba(245, 245, 247, 0.8);
   border: 1px solid rgba(210, 210, 215, 0.6);
-  font-size: 15px;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
-.license-list li button {
+.vehicles-table thead {
+  background: #f0f0f2;
+}
+
+.vehicles-table th,
+.vehicles-table td {
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 15px;
+  border-bottom: 1px solid rgba(210, 210, 215, 0.6);
+}
+
+.vehicles-table tr:last-child td {
+  border-bottom: none;
+}
+
+.vehicles-table button {
   border: none;
   background: none;
   color: #d70015;

@@ -15,8 +15,11 @@
         </a>
         <ul class="nav-links">
           <li><a href="#">My Account</a></li>
-          <li><a href="#">My Vehicles</a></li>
+          <li><a href="#" id="nav-vehicles">My Vehicles</a></li>
           <li><a href="#">Query</a></li>
+          <li id="nav-signout-item" class="hidden">
+            <a href="#" id="nav-signout">Sign out</a>
+          </li>
         </ul>
       </nav>
     </header>
@@ -312,7 +315,7 @@
 
       <section id="license-section" class="license-panel hidden" aria-live="polite">
         <div class="license-header">
-          <h2>License Registration</h2>
+          <h2>Vehicles Management</h2>
           <p id="welcome-message"></p>
         </div>
         <form id="license-form" class="license-form">
@@ -322,23 +325,50 @@
               type="text"
               id="license-number"
               placeholder="e.g., ABC1234"
-              pattern="^[A-Z0-9-]{5,10}$"
+              pattern="^[A-Z0-9-]{1,7}$"
               title="Enter a license plate like ABC1234"
               required
             />
           </label>
           <label class="license-field">
+            <span>Vehicle manufacturer</span>
+            <select id="vehicle-make" required>
+              <option value="" disabled selected>Select manufacturer</option>
+            </select>
+          </label>
+          <label class="license-field">
             <span>Vehicle model</span>
-            <input type="text" id="vehicle-model" placeholder="Vehicle model" required />
+            <select id="vehicle-model" required>
+              <option value="" disabled selected>Select model</option>
+            </select>
+          </label>
+          <label class="license-field">
+            <span>Vehicle year</span>
+            <select id="vehicle-year" required>
+              <option value="" disabled selected>Select year</option>
+            </select>
           </label>
           <button type="submit" class="primary-button">Save license</button>
         </form>
         <p id="license-message" class="message" role="alert"></p>
         <div class="license-list-container">
-          <h3>Registered license plates</h3>
-          <ul id="license-list" class="license-list"></ul>
+          <h3>Registered vehicles</h3>
+          <div class="table-wrapper">
+            <table id="vehicles-table" class="vehicles-table">
+              <thead>
+                <tr>
+                  <th scope="col">License Plate</th>
+                  <th scope="col">Manufacturer</th>
+                  <th scope="col">Model</th>
+                  <th scope="col">Year</th>
+                  <th scope="col">Blacklist Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vehicles-table-body"></tbody>
+            </table>
+          </div>
         </div>
-        <button id="logout-button" class="secondary-button">Sign out</button>
       </section>
     </main>
 

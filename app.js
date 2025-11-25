@@ -25,8 +25,13 @@ const licenseSection = document.getElementById("license-section");
 const licenseForm = document.getElementById("license-form");
 const licenseMessage = document.getElementById("license-message");
 const welcomeMessage = document.getElementById("welcome-message");
-const licenseList = document.getElementById("license-list");
-const logoutButton = document.getElementById("logout-button");
+const vehicleMakeSelect = document.getElementById("vehicle-make");
+const vehicleModelSelect = document.getElementById("vehicle-model");
+const vehicleYearSelect = document.getElementById("vehicle-year");
+const vehiclesTableBody = document.getElementById("vehicles-table-body");
+const navVehiclesLink = document.getElementById("nav-vehicles");
+const navSignoutItem = document.getElementById("nav-signout-item");
+const navSignoutLink = document.getElementById("nav-signout");
 const monthSelect = document.getElementById("register-birth-month");
 const daySelect = document.getElementById("register-birth-day");
 const yearSelect = document.getElementById("register-birth-year");
@@ -43,6 +48,16 @@ let loginStage = "identifier";
 const captchaState = {
   register: "469P",
   reset: "469P",
+};
+
+const LICENSE_PATTERN = /^[A-Z0-9-]{1,7}$/;
+const VEHICLE_MODELS = {
+  Toyota: ["Camry", "Corolla", "RAV4", "Prius"],
+  Honda: ["Civic", "Accord", "CR-V", "Pilot"],
+  Ford: ["F-150", "Escape", "Mustang", "Explorer"],
+  Tesla: ["Model S", "Model 3", "Model X", "Model Y"],
+  BMW: ["3 Series", "5 Series", "X3", "X5"],
+  Mercedes: ["C-Class", "E-Class", "GLC", "GLE"],
 };
 
 function readUsers() {
@@ -188,6 +203,66 @@ function populateBirthSelects() {
   yearSelect.addEventListener("change", () => updateBirthDayOptions());
 }
 
+function populateVehicleSelects() {
+  if (!vehicleMakeSelect || !vehicleModelSelect || !vehicleYearSelect) return;
+
+  vehicleMakeSelect.innerHTML = "";
+  const makePlaceholder = document.createElement("option");
+  makePlaceholder.value = "";
+  makePlaceholder.textContent = "Select manufacturer";
+  makePlaceholder.disabled = true;
+  makePlaceholder.selected = true;
+  vehicleMakeSelect.appendChild(makePlaceholder);
+
+  Object.keys(VEHICLE_MODELS).forEach((make) => {
+    const option = document.createElement("option");
+    option.value = make;
+    option.textContent = make;
+    vehicleMakeSelect.appendChild(option);
+  });
+
+  const currentYear = new Date().getFullYear();
+  const startYear = 1980;
+  vehicleYearSelect.innerHTML = "";
+  const yearPlaceholder = document.createElement("option");
+  yearPlaceholder.value = "";
+  yearPlaceholder.textContent = "Select year";
+  yearPlaceholder.disabled = true;
+  yearPlaceholder.selected = true;
+  vehicleYearSelect.appendChild(yearPlaceholder);
+
+  for (let year = currentYear; year >= startYear; year -= 1) {
+    const option = document.createElement("option");
+    option.value = String(year);
+    option.textContent = String(year);
+    vehicleYearSelect.appendChild(option);
+  }
+
+  const resetModelOptions = (selectedMake) => {
+    vehicleModelSelect.innerHTML = "";
+    const modelPlaceholder = document.createElement("option");
+    modelPlaceholder.value = "";
+    modelPlaceholder.textContent = "Select model";
+    modelPlaceholder.disabled = true;
+    modelPlaceholder.selected = true;
+    vehicleModelSelect.appendChild(modelPlaceholder);
+
+    const models = VEHICLE_MODELS[selectedMake] || [];
+    models.forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model;
+      option.textContent = model;
+      vehicleModelSelect.appendChild(option);
+    });
+  };
+
+  resetModelOptions("");
+
+  vehicleMakeSelect.addEventListener("change", (event) => {
+    resetModelOptions(event.target.value);
+  });
+}
+
 function resetRegisterForm() {
   if (registerForm) {
     registerForm.reset();
@@ -237,6 +312,12 @@ function generateCaptcha(context = "register") {
   captchaState[context] = code;
   updateCaptchaDisplay(context, code);
   clearCaptchaInput(context);
+}
+
+function setNavSignoutVisibility(isVisible) {
+  if (navSignoutItem) {
+    navSignoutItem.classList.toggle("hidden", !isVisible);
+  }
 }
 
 function setupCaptchaControls() {
@@ -443,8 +524,15 @@ function handleRegister(event) {
   users.push(newUser);
   saveUsers(users);
   resetRegisterForm();
-  showLoginView();
-  showMessage(authMessage, "Registration successful! Please sign in to continue.", "success");
+  currentUser = newUser;
+  setSession(newUser);
+  showMessage(authMessage, "Registration successful!", "success");
+  enterLicenseMode();
+  showMessage(
+    licenseMessage,
+    "Registration successful! You can start adding vehicles now.",
+    "success"
+  );
 }
 
 function handleReset(event) {
@@ -572,6 +660,9 @@ function enterLicenseMode() {
   if (!currentUser) return;
   authShell.classList.add("hidden");
   licenseSection.classList.remove("hidden");
+  setNavSignoutVisibility(true);
+  licenseForm?.reset();
+  populateVehicleSelects();
   const name =
     currentUser.displayName ||
     [currentUser.firstName, currentUser.lastName].filter(Boolean).join(" ") ||
@@ -586,6 +677,7 @@ function exitLicenseMode() {
   setSession(null);
   licenseSection.classList.add("hidden");
   authShell.classList.remove("hidden");
+  setNavSignoutVisibility(false);
   showLoginView();
   showMessage(authMessage, "You have signed out.", "success");
 }
@@ -596,12 +688,26 @@ function handleLicenseSubmit(event) {
     .getElementById("license-number")
     .value.trim()
     .toUpperCase();
-  const vehicleModel = document
-    .getElementById("vehicle-model")
-    .value.trim();
+  const vehicleMake = vehicleMakeSelect?.value || "";
+  const vehicleModel = vehicleModelSelect?.value || "";
+  const vehicleYear = vehicleYearSelect?.value || "";
 
   if (!currentUser) {
     showMessage(licenseMessage, "Please sign in first.", "error");
+    return;
+  }
+
+  if (!LICENSE_PATTERN.test(licenseNumber)) {
+    showMessage(
+      licenseMessage,
+      "License plate must be 1-7 characters, A-Z, 0-9, or hyphen.",
+      "error"
+    );
+    return;
+  }
+
+  if (!vehicleMake || !vehicleModel || !vehicleYear) {
+    showMessage(licenseMessage, "Please select make, model, and year.", "error");
     return;
   }
 
@@ -615,7 +721,10 @@ function handleLicenseSubmit(event) {
 
   const entry = {
     licenseNumber,
-    vehicleModel,
+    make: vehicleMake,
+    model: vehicleModel,
+    year: vehicleYear,
+    blacklisted: false,
     createdAt: new Date().toISOString(),
   };
 
@@ -624,32 +733,55 @@ function handleLicenseSubmit(event) {
   saveLicenses(licenses);
   showMessage(licenseMessage, "License plate saved successfully!", "success");
   licenseForm.reset();
+  populateVehicleSelects();
   refreshLicenseList();
 }
 
 function refreshLicenseList() {
-  licenseList.innerHTML = "";
+  if (!currentUser) return;
+  if (!vehiclesTableBody) return;
+  vehiclesTableBody.innerHTML = "";
   const licenses = readLicenses();
   const userLicenses = licenses[currentUser.username] || [];
 
   if (userLicenses.length === 0) {
-    licenseList.innerHTML = "<li>No license plates registered yet.</li>";
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.textContent = "No vehicles registered yet.";
+    row.appendChild(cell);
+    vehiclesTableBody.appendChild(row);
     return;
   }
 
   userLicenses
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .forEach((item) => {
-      const listItem = document.createElement("li");
-      const left = document.createElement("span");
-      left.innerHTML = `<strong>${item.licenseNumber}</strong> - ${item.vehicleModel}`;
+      const row = document.createElement("tr");
+      const status = item.blacklisted ? "Blacklisted" : "Not blacklisted";
 
+      const cells = [
+        item.licenseNumber,
+        item.make || "",
+        item.model || "",
+        item.year || "",
+        status,
+      ];
+
+      cells.forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.appendChild(cell);
+      });
+
+      const actionCell = document.createElement("td");
       const removeButton = document.createElement("button");
       removeButton.textContent = "Remove";
       removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
+      actionCell.appendChild(removeButton);
+      row.appendChild(actionCell);
 
-      listItem.append(left, removeButton);
-      licenseList.appendChild(listItem);
+      vehiclesTableBody.appendChild(row);
     });
 }
 
@@ -661,6 +793,23 @@ function removeLicense(licenseNumber) {
   saveLicenses(licenses);
   refreshLicenseList();
   showMessage(licenseMessage, "License plate removed.", "success");
+}
+
+function handleNavVehicles(event) {
+  event.preventDefault();
+  if (currentUser) {
+    enterLicenseMode();
+    return;
+  }
+
+  setNavSignoutVisibility(false);
+  if (licenseSection) {
+    licenseSection.classList.add("hidden");
+  }
+  if (authShell) {
+    authShell.classList.remove("hidden");
+  }
+  showLoginView();
 }
 
 createAccountLinks.forEach((link) => {
@@ -693,14 +842,20 @@ registerForm.addEventListener("submit", handleRegister);
 loginForm.addEventListener("submit", handleLogin);
 resetForm?.addEventListener("submit", handleReset);
 licenseForm.addEventListener("submit", handleLicenseSubmit);
-logoutButton.addEventListener("click", exitLicenseMode);
+navVehiclesLink?.addEventListener("click", handleNavVehicles);
+navSignoutLink?.addEventListener("click", (event) => {
+  event.preventDefault();
+  exitLicenseMode();
+});
 
 document.addEventListener("DOMContentLoaded", () => {
   populateBirthSelects();
+  populateVehicleSelects();
   setupCaptchaControls();
   generateCaptcha("register");
   generateCaptcha("reset");
   showLoginView();
+  setNavSignoutVisibility(false);
 
   const username = getSession();
   if (!username) {
