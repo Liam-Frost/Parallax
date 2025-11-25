@@ -667,17 +667,6 @@ main {
   gap: 24px;
 }
 
-.query-panel {
-  margin-top: 40px;
-  background: #fff;
-  border-radius: 22px;
-  border: 1px solid rgba(210, 210, 215, 0.7);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
-  padding: 40px 48px 48px;
-  display: grid;
-  gap: 24px;
-}
-
 .license-header h2 {
   margin: 0;
   font-size: 24px;
@@ -716,22 +705,6 @@ main {
   margin: 0;
   color: rgba(29, 29, 31, 0.7);
   font-size: 14px;
-}
-
-.query-header h2 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.query-header p {
-  margin: 8px 0 0;
-  color: rgba(29, 29, 31, 0.7);
-}
-
-.query-form {
-  display: grid;
-  gap: 16px;
-  max-width: 480px;
 }
 
 .account-block.danger {
