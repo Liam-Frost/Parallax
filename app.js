@@ -30,7 +30,6 @@ const vehicleMakeSelect = document.getElementById("vehicle-make");
 const vehicleModelSelect = document.getElementById("vehicle-model");
 const vehicleYearSelect = document.getElementById("vehicle-year");
 const vehiclesTableBody = document.getElementById("vehicles-table-body");
-const navAccountLink = document.getElementById("nav-account");
 const navVehiclesLink = document.getElementById("nav-vehicles");
 const navSignoutItem = document.getElementById("nav-signout-item");
 const navSignoutLink = document.getElementById("nav-signout");
@@ -77,6 +76,16 @@ const captchaState = {
 const LICENSE_PATTERN = /^[A-Z0-9-]{1,7}$/;
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+const VEHICLE_MODELS = {
+  Toyota: ["Camry", "Corolla", "RAV4", "Prius"],
+  Honda: ["Civic", "Accord", "CR-V", "Pilot"],
+  Ford: ["F-150", "Escape", "Mustang", "Explorer"],
+  Tesla: ["Model S", "Model 3", "Model X", "Model Y"],
+  BMW: ["3 Series", "5 Series", "X3", "X5"],
+  Mercedes: ["C-Class", "E-Class", "GLC", "GLE"],
+};
+
+const LICENSE_PATTERN = /^[A-Z0-9-]{1,7}$/;
 const VEHICLE_MODELS = {
   Toyota: ["Camry", "Corolla", "RAV4", "Prius"],
   Honda: ["Civic", "Accord", "CR-V", "Pilot"],
@@ -696,7 +705,6 @@ function enterLicenseMode() {
   if (!currentUser) return;
   authShell.classList.add("hidden");
   licenseSection.classList.remove("hidden");
-  accountSection?.classList.add("hidden");
   setNavSignoutVisibility(true);
   licenseForm?.reset();
   populateVehicleSelects();
@@ -1044,26 +1052,9 @@ function handleNavVehicles(event) {
   if (licenseSection) {
     licenseSection.classList.add("hidden");
   }
-  if (accountSection) {
-    accountSection.classList.add("hidden");
-  }
   if (authShell) {
     authShell.classList.remove("hidden");
   }
-  showLoginView();
-}
-
-function handleNavAccount(event) {
-  event.preventDefault();
-  if (currentUser) {
-    enterAccountMode();
-    return;
-  }
-
-  setNavSignoutVisibility(false);
-  licenseSection?.classList.add("hidden");
-  accountSection?.classList.add("hidden");
-  authShell?.classList.remove("hidden");
   showLoginView();
 }
 
@@ -1097,15 +1088,11 @@ registerForm.addEventListener("submit", handleRegister);
 loginForm.addEventListener("submit", handleLogin);
 resetForm?.addEventListener("submit", handleReset);
 licenseForm.addEventListener("submit", handleLicenseSubmit);
-accountContactForm?.addEventListener("submit", handleAccountContactSubmit);
-accountPasswordForm?.addEventListener("submit", handleAccountPasswordSubmit);
 navVehiclesLink?.addEventListener("click", handleNavVehicles);
-navAccountLink?.addEventListener("click", handleNavAccount);
 navSignoutLink?.addEventListener("click", (event) => {
   event.preventDefault();
   exitLicenseMode();
 });
-accountDeleteButton?.addEventListener("click", handleAccountDelete);
 
 document.addEventListener("DOMContentLoaded", () => {
   populateBirthSelects();
