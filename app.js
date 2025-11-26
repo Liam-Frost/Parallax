@@ -287,29 +287,20 @@ const VEHICLE_MODELS = {
     "GLA", "GLB", "GLC", "GLE", "GLS", "G-Class",
     "EQE", "EQS"
   ],
-"Mercedes-Maybach": [
-  "S-Class",
-  "GLS",
-  "EQS SUV",
-  "Pullman"
-],
-"Mercedes-AMG": [
-  "A-Class",
-  "CLA",
-  "C-Class",
-  "E-Class",
-  "S-Class",
-  "GT",
-  "SL",
-  "G-Class",
-  "GLA",
-  "GLB",
-  "GLC",
-  "GLE",
-  "GLS",
-  "EQE",
-  "EQS"
-]
+  "Mercedes-Maybach": [
+    "S-Class",
+    "GLS",
+    "EQS SUV",
+    "Pullman"
+  ],
+  "Mercedes-AMG": [
+    "A-Class", "C-Class", "E-Class", "S-Class",
+    "CLA",
+    "GT",
+    "SL",
+    "G-Class", "GLA", "GLB", "GLC", "GLE", "GLS",
+    "EQE", "EQS"
+  ],
   Mini: [
     "Cooper 3 Door", "Cooper 5 Door", "Clubman", "Countryman"
   ],
