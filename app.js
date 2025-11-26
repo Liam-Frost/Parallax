@@ -82,15 +82,26 @@ const captchaState = {
 const LICENSE_PATTERN = /^[A-Z0-9-]{1,7}$/;
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$/;
+const REGION_OPTIONS = [
+  { iso: "US", name: "United States", phoneCode: "+1" },
+  { iso: "CA", name: "Canada",        phoneCode: "+1" },
+  { iso: "MX", name: "Mexico",        phoneCode: "+52" },
+  { iso: "BR", name: "Brazil",        phoneCode: "+55" },
+  { iso: "GB", name: "United Kingdom", phoneCode: "+44" },
+  { iso: "DE", name: "Germany",        phoneCode: "+49" },
+  { iso: "FR", name: "France",         phoneCode: "+33" },
+  { iso: "IT", name: "Italy",          phoneCode: "+39" },
+  { iso: "ES", name: "Spain",          phoneCode: "+34" },
+  { iso: "NL", name: "Netherlands",    phoneCode: "+31" },
+  { iso: "SE", name: "Sweden",         phoneCode: "+46" },
+  { iso: "CN", name: "China",          phoneCode: "+86" },
+  { iso: "HK", name: "Hong Kong",      phoneCode: "+852" },
+  { iso: "TW", name: "Taiwan",         phoneCode: "+886" },
+  { iso: "JP", name: "Japan",          phoneCode: "+81" },
+  { iso: "KR", name: "South Korea",    phoneCode: "+82" },
+  { iso: "SG", name: "Singapore",      phoneCode: "+65" },
+];
 const VEHICLE_MODELS = {
-  Engneering: [
-    "CPEN", "EE", "EMPH",
-    "BMEG", "CVIL", "MECH"
-  ],
-  StarWars: [
-    "DeathStar", "MF", "X-Wing",
-    "R2D2", "C3PO", "TIE Fighter"
-  ],
   Acura: [
     "ILX", "TLX", "RLX",
     "RDX", "MDX"
@@ -127,6 +138,10 @@ const VEHICLE_MODELS = {
     "Charger", "Challenger",
     "Durango", "Journey",
     "Grand Caravan"
+  ],
+  Engneering: [
+    "CPEN", "EE", "EMPH",
+    "BMEG", "CVIL", "MECH"
   ],
   Fiat: [
     "500", "500X", "500L"
@@ -229,6 +244,10 @@ const VEHICLE_MODELS = {
   "Rolls-Royce": [
     "Ghost", "Phantom", "Wraith", "Dawn", "Cullinan"
   ],
+  StarWars: [
+    "DeathStar", "MF", "X-Wing",
+    "R2D2", "C3PO", "TIE Fighter"
+  ],
   Subaru: [
     "Impreza", "Legacy",
     "Crosstrek", "Forester", "Outback", "Ascent",
@@ -257,6 +276,40 @@ const VEHICLE_MODELS = {
     "EX30", "EX90"
   ]
 };
+
+function populateCountrySelect(selectEl) {
+  selectEl.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select country/region";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  selectEl.appendChild(placeholder);
+
+  REGION_OPTIONS.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.iso;
+    option.textContent = item.name;
+    selectEl.appendChild(option);
+  });
+}
+
+function populatePhoneCodeSelect(selectEl) {
+  selectEl.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Country code";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  selectEl.appendChild(placeholder);
+
+  REGION_OPTIONS.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.phoneCode;
+    option.textContent = `${item.phoneCode} (${item.name})`;
+    selectEl.appendChild(option);
+  });
+}
 
 function readUsers() {
   try {
