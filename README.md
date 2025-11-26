@@ -176,7 +176,3 @@ Design inspired by Apple ID and Apple UI conventions.
 All implementation done manually without external libraries.
 
 If you have ideas or want additional documentation (API, architecture diagram, code comments, etc.), feel free to ask!
-
-```
-
-```
