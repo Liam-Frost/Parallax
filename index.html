@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Parallax Sign In and License Registration</title>
+    <title>Parallax</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -26,11 +26,17 @@
 
     <main>
       <section id="auth-shell" class="signin-shell">
-        <h1 class="signin-heading">Parallax Account</h1>
+        <h1 class="signin-heading">Parallax</h1>
         <p class="signin-subheading">Manage your Parallax Account</p>
         <section class="signin-card" aria-labelledby="form-title">
-          <div class="account-logo" aria-hidden="true"></div>
-          <h2 id="form-title" class="card-title">Sign in to Parallax</h2>
+        <div class="account-logo" aria-hidden="true">
+          <div class="parallax-ring-logo">
+            <div class="parallax-ring-bg"></div>
+            <canvas id="parallax-ring-mask"></canvas>
+            <div class="parallax-ring-mark">P</div>
+          </div>
+        </div>
+        <h2 id="form-title" class="card-title">Sign in to Parallax</h2>
           <p id="form-subtitle" class="card-subtitle">
             Enter your email or phone number to continue.
           </p>
