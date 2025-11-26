@@ -38,7 +38,6 @@ const daySelect = document.getElementById("register-birth-day");
 const yearSelect = document.getElementById("register-birth-year");
 const registerCountrySelect = document.getElementById("register-country");
 const registerPhoneCountrySelect = document.getElementById("register-phone-country");
-const accountPhoneCountrySelect = document.getElementById("account-phone-country");
 const captchaInput = document.getElementById("register-captcha");
 const captchaDisplay = document.getElementById("captcha-display");
 const refreshCaptchaButton = document.getElementById("refresh-captcha");
