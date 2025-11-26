@@ -359,6 +359,64 @@ const VEHICLE_MODELS = {
     "EX30", "EX90"
   ]
 };
+const ringCfg = {
+  layers: 4,
+  baseRadiusRatio: 0.20,
+  gap: 10,
+  baseDots: 24,
+  dotsDelta: 2,
+  dotSizeInner: 2.8,
+  dotSizeOuter: 4.5,
+  ringStartAngle: (-10 * Math.PI / 180),
+};
+
+function drawParallaxRingLogo() {
+  const canvas = document.getElementById("parallax-ring-mask");
+  if (!canvas) return;
+
+  const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const rect = canvas.getBoundingClientRect();
+  const size = Math.min(rect.width, rect.height) || 80;
+
+  canvas.width = Math.floor(size * DPR);
+  canvas.height = Math.floor(size * DPR);
+
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  const cx = size / 2;
+  const cy = size / 2;
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, size, size);
+  ctx.globalCompositeOperation = "destination-out";
+
+  const baseR = size * ringCfg.baseRadiusRatio;
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  for (let layer = 0; layer < ringCfg.layers; layer += 1) {
+    const t = ringCfg.layers === 1 ? 0 : layer / (ringCfg.layers - 1);
+    const r = baseR + layer * ringCfg.gap;
+    const count = Math.max(3, Math.round(ringCfg.baseDots + layer * ringCfg.dotsDelta));
+    const step = (Math.PI * 2) / count;
+    const sizeDot = lerp(ringCfg.dotSizeInner, ringCfg.dotSizeOuter, t);
+    const a0 = ringCfg.ringStartAngle + (layer % 2 ? step * 0.5 : 0);
+
+    for (let i = 0; i < count; i += 1) {
+      const a = a0 + i * step;
+      const x = cx + r * Math.cos(a);
+      const y = cy + r * Math.sin(a);
+      ctx.beginPath();
+      ctx.arc(x, y, sizeDot, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+}
 
 function populateCountrySelect(selectEl) {
   selectEl.innerHTML = "";
@@ -1553,6 +1611,9 @@ document.addEventListener("DOMContentLoaded", () => {
   generateCaptcha("account");
   showLoginView();
   setNavSignoutVisibility(false);
+
+  drawParallaxRingLogo();
+  window.addEventListener("resize", drawParallaxRingLogo);
 
   const username = getSession();
   if (!username) {
