@@ -1,6 +1,7 @@
 package parallax.backend.http;
 
 import com.google.gson.Gson;
+import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import parallax.backend.db.UserRepository;
@@ -24,6 +25,16 @@ public class AuthLoginHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+
+        addCorsHeaders(exchange);
+
+        String method = exchange.getRequestMethod();
+
+        if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(204, -1);
+            return;
+        }
+
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             exchange.sendResponseHeaders(405, -1);
             return;
@@ -50,6 +61,14 @@ public class AuthLoginHandler implements HttpHandler {
         LoginResponse response = new LoginResponse(true, "Login successful", found.getUsername(), found.getDisplayName());
         // TODO: plug in real authentication (sessions / tokens) when SQLite integration arrives
         sendJson(exchange, 200, response);
+
+    }
+
+    private void addCorsHeaders(HttpExchange exchange) {
+        Headers h = exchange.getResponseHeaders();
+        h.add("Access-Control-Allow-Origin", "*");
+        h.add("Access-Control-Allow-Headers", "Content-Type");
+        h.add("Access-Control-Allow-Methods", "POST, OPTIONS");
     }
 
     private void sendJson(HttpExchange exchange, int statusCode, Object body) throws IOException {

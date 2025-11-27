@@ -1,0 +1,9 @@
+parallax\backend\http\HttpServerApp.class
+parallax\backend\model\LoginResponse.class
+parallax\backend\model\LoginRequest.class
+parallax\backend\db\DataSource.class
+parallax\backend\config\AppConfig.class
+parallax\backend\model\User.class
+parallax\backend\db\UserRepository.class
+parallax\backend\http\AuthLoginHandler.class
+parallax\backend\http\HealthHandler.class
