@@ -6,15 +6,20 @@ const STORAGE_KEYS = {
 
 const API_BASE = window.APP_CONFIG?.API_BASE || "/api";
 
-async function api(path, options = {}) {
-  const url = `${API_BASE}${path}`;
-  const response = await fetch(url, {
+async function apiRequest(path, options = {}) {
+  const base = (window.APP_CONFIG && window.APP_CONFIG.API_BASE) || "";
+  const response = await fetch(base + path, {
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
     ...options,
   });
+  return response;
+}
+
+async function api(path, options = {}) {
+  const response = await apiRequest(path, options);
 
   const isJson = response.headers
     .get("Content-Type")
@@ -524,6 +529,16 @@ function getSession() {
   }
 }
 
+async function fetchUserVehicles(username) {
+  const res = await apiRequest(
+    `/vehicles?username=${encodeURIComponent(username || "")}`
+  );
+  if (!res.ok) {
+    throw new Error("Failed to fetch vehicles");
+  }
+  return res.json();
+}
+
 function showMessage(element, text, type = "") {
   element.textContent = text;
   element.classList.remove("success", "error");
@@ -830,7 +845,7 @@ function showResetView() {
   }
 }
 
-function handleRegister(event) {
+async function handleRegister(event) {
   event.preventDefault();
 
   const country = document.getElementById("register-country")?.value;
@@ -901,56 +916,97 @@ function handleRegister(event) {
     return;
   }
 
-  const users = readUsers();
-  const lowerEmail = (email || "").toLowerCase();
-  if (users.some((user) => user.email?.toLowerCase() === lowerEmail)) {
-    showMessage(authMessage, "That email is already registered. Please sign in instead.", "error");
-    return;
+  try {
+    const res = await apiRequest("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        password,
+        firstName,
+        lastName,
+        country,
+        birthMonth: month,
+        birthDay: day,
+        birthYear: year,
+        phoneCountry,
+        phone: phoneDigits,
+        contactMethod,
+      }),
+    });
+
+    if (res.status === 201) {
+      const lowerEmail = (email || "").toLowerCase();
+      const displayName =
+        [firstName, lastName].filter(Boolean).join(" ") || lowerEmail;
+      const newUser = {
+        username: lowerEmail,
+        email: lowerEmail,
+        password,
+        firstName,
+        lastName,
+        displayName,
+        country,
+        birthDate: { month, day, year },
+        phoneCountry,
+        phone: phoneDigits,
+        contactMethod,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Temporary local storage until full backend persistence is wired everywhere
+      const users = readUsers();
+      users.push(newUser);
+      saveUsers(users);
+
+      resetRegisterForm();
+      currentUser = newUser;
+      setSession(newUser);
+      showMessage(authMessage, "Registration successful!", "success");
+      enterLicenseMode();
+      showMessage(
+        licenseMessage,
+        "Registration successful! You can start adding vehicles now.",
+        "success"
+      );
+      return;
+    }
+
+    if (res.status === 409) {
+      const body = await res.json().catch(() => ({}));
+      const code = body?.message || "";
+      if (code === "EMAIL_EXISTS") {
+        showMessage(
+          authMessage,
+          "That email is already registered. Please sign in instead.",
+          "error"
+        );
+        return;
+      }
+      if (code === "PHONE_EXISTS") {
+        showMessage(
+          authMessage,
+          "That phone number is already registered. Please sign in instead.",
+          "error"
+        );
+        return;
+      }
+      showMessage(authMessage, "Registration already exists.", "error");
+      return;
+    }
+
+    showMessage(
+      authMessage,
+      "Unable to register right now. Please try again soon.",
+      "error"
+    );
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      authMessage,
+      error?.message || "Unable to register right now. Please try again.",
+      "error"
+    );
   }
-
-  const phoneSignature = `${(phoneCountry || "").replace(/\D/g, "")}${
-    phoneDigits || ""
-  }`;
-  if (
-    phoneDigits &&
-    users.some((user) => {
-      const storedDigits = String(user.phone || "").replace(/\D/g, "");
-      const storedCountry = String(user.phoneCountry || "").replace(/\D/g, "");
-      return storedDigits && storedCountry + storedDigits === phoneSignature;
-    })
-  ) {
-    showMessage(authMessage, "That phone number is already registered. Please sign in instead.", "error");
-    return;
-  }
-
-  const displayName = [firstName, lastName].filter(Boolean).join(" ") || lowerEmail;
-  const newUser = {
-    username: lowerEmail,
-    email: lowerEmail,
-    password,
-    firstName,
-    lastName,
-    displayName,
-    country,
-    birthDate: { month, day, year },
-    phoneCountry,
-    phone: phoneDigits,
-    contactMethod,
-    createdAt: new Date().toISOString(),
-  };
-
-  users.push(newUser);
-  saveUsers(users);
-  resetRegisterForm();
-  currentUser = newUser;
-  setSession(newUser);
-  showMessage(authMessage, "Registration successful!", "success");
-  enterLicenseMode();
-  showMessage(
-    licenseMessage,
-    "Registration successful! You can start adding vehicles now.",
-    "success"
-  );
 }
 
 function handleReset(event) {
@@ -1192,7 +1248,7 @@ function enterQueryMode() {
 }
 
 
-function handleLicenseSubmit(event) {
+async function handleLicenseSubmit(event) {
   event.preventDefault();
   const licenseNumber = document
     .getElementById("license-number")
@@ -1221,30 +1277,46 @@ function handleLicenseSubmit(event) {
     return;
   }
 
-  const licenses = readLicenses();
-  const userLicenses = licenses[currentUser.username] || [];
+  try {
+    const res = await apiRequest("/vehicles", {
+      method: "POST",
+      body: JSON.stringify({
+        username: currentUser.username,
+        licenseNumber,
+        make: vehicleMake,
+        model: vehicleModel,
+        year: vehicleYear,
+      }),
+    });
 
-  if (userLicenses.some((item) => item.licenseNumber === licenseNumber)) {
-    showMessage(licenseMessage, "That license plate is already registered.", "error");
-    return;
+    if (res.status === 201) {
+      showMessage(licenseMessage, "License plate saved successfully!", "success");
+      licenseForm.reset();
+      populateVehicleSelects();
+      await refreshLicenseList();
+      return;
+    }
+
+    const body = await res.json().catch(() => ({}));
+    const code = body?.message || "";
+    if (res.status === 409 && code === "LICENSE_EXISTS") {
+      showMessage(licenseMessage, "That license plate is already registered.", "error");
+      return;
+    }
+
+    showMessage(
+      licenseMessage,
+      body?.message || "Unable to save license plate right now.",
+      "error"
+    );
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      licenseMessage,
+      error?.message || "Unable to save license plate right now.",
+      "error"
+    );
   }
-
-  const entry = {
-    licenseNumber,
-    make: vehicleMake,
-    model: vehicleModel,
-    year: vehicleYear,
-    blacklisted: false,
-    createdAt: new Date().toISOString(),
-  };
-
-  userLicenses.push(entry);
-  licenses[currentUser.username] = userLicenses;
-  saveLicenses(licenses);
-  showMessage(licenseMessage, "License plate saved successfully!", "success");
-  licenseForm.reset();
-  populateVehicleSelects();
-  refreshLicenseList();
 }
 
 function handleQuerySubmit(event) {
@@ -1454,14 +1526,33 @@ function handleAccountDelete() {
   showMessage(authMessage, "Your account has been deleted.", "success");
 }
 
-function refreshLicenseList() {
+async function refreshLicenseList() {
   if (!currentUser) return;
   if (!vehiclesTableBody) return;
   vehiclesTableBody.innerHTML = "";
-  const licenses = readLicenses();
-  const userLicenses = licenses[currentUser.username] || [];
 
-  if (userLicenses.length === 0) {
+  try {
+    const vehicles = await fetchUserVehicles(currentUser.username);
+    const licenses = readLicenses();
+    licenses[currentUser.username] = vehicles;
+    saveLicenses(licenses);
+
+    renderVehicleRows(vehicles);
+  } catch (error) {
+    console.error("Failed to fetch vehicles from API", error);
+    const fallbackLicenses = readLicenses();
+    const userLicenses = fallbackLicenses[currentUser.username] || [];
+    renderVehicleRows(userLicenses);
+  }
+}
+
+function renderVehicleRows(vehicles) {
+  if (!vehiclesTableBody) return;
+  const sorted = [...vehicles].sort(
+    (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+  );
+
+  if (sorted.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6;
@@ -1471,45 +1562,64 @@ function refreshLicenseList() {
     return;
   }
 
-  userLicenses
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .forEach((item) => {
-      const row = document.createElement("tr");
-      const status = item.blacklisted ? "Blacklisted" : "Not blacklisted";
+  sorted.forEach((item) => {
+    const row = document.createElement("tr");
+    const status = item.blacklisted ? "Blacklisted" : "Not blacklisted";
 
-      const cells = [
-        item.licenseNumber,
-        item.make || "",
-        item.model || "",
-        item.year || "",
-        status,
-      ];
+    const cells = [
+      item.licenseNumber,
+      item.make || "",
+      item.model || "",
+      item.year || "",
+      status,
+    ];
 
-      cells.forEach((value) => {
-        const cell = document.createElement("td");
-        cell.textContent = value;
-        row.appendChild(cell);
-      });
-
-      const actionCell = document.createElement("td");
-      const removeButton = document.createElement("button");
-      removeButton.textContent = "Remove";
-      removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
-      actionCell.appendChild(removeButton);
-      row.appendChild(actionCell);
-
-      vehiclesTableBody.appendChild(row);
+    cells.forEach((value) => {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
     });
+
+    const actionCell = document.createElement("td");
+    const removeButton = document.createElement("button");
+    removeButton.textContent = "Remove";
+    removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
+    actionCell.appendChild(removeButton);
+    row.appendChild(actionCell);
+
+    vehiclesTableBody.appendChild(row);
+  });
 }
 
-function removeLicense(licenseNumber) {
-  const licenses = readLicenses();
-  const userLicenses = licenses[currentUser.username] || [];
-  const updated = userLicenses.filter((item) => item.licenseNumber !== licenseNumber);
-  licenses[currentUser.username] = updated;
-  saveLicenses(licenses);
-  refreshLicenseList();
-  showMessage(licenseMessage, "License plate removed.", "success");
+async function removeLicense(licenseNumber) {
+  if (!currentUser) return;
+
+  try {
+    const res = await apiRequest("/vehicles", {
+      method: "DELETE",
+      body: JSON.stringify({
+        username: currentUser.username,
+        licenseNumber,
+      }),
+    });
+
+    if (res.status === 204) {
+      await refreshLicenseList();
+      showMessage(licenseMessage, "License plate removed.", "success");
+      return;
+    }
+
+    const body = await res.json().catch(() => ({}));
+    const errorMsg = body?.message || "Unable to remove license plate.";
+    showMessage(licenseMessage, errorMsg, "error");
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      licenseMessage,
+      error?.message || "Unable to remove license plate.",
+      "error"
+    );
+  }
 }
 
 function handleNavVehicles(event) {

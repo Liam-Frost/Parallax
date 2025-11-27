@@ -1,10 +1,8 @@
 package parallax.backend.model;
 
-public class User {
-    private String username;
+public class RegisterRequest {
     private String email;
-    private String displayName;
-    private String password; // TODO: hash passwords when real auth is implemented
+    private String password;
     private String firstName;
     private String lastName;
     private String country;
@@ -14,24 +12,8 @@ public class User {
     private String phoneCountry;
     private String phone;
     private String contactMethod;
-    private String createdAt;
 
-    public User() {
-    }
-
-    public User(String username, String email, String displayName, String password) {
-        this.username = username;
-        this.email = email;
-        this.displayName = displayName;
-        this.password = password;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
+    public RegisterRequest() {
     }
 
     public String getEmail() {
@@ -40,14 +22,6 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public void setDisplayName(String displayName) {
-        this.displayName = displayName;
     }
 
     public String getPassword() {
@@ -128,13 +102,5 @@ public class User {
 
     public void setContactMethod(String contactMethod) {
         this.contactMethod = contactMethod;
-    }
-
-    public String getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
     }
 }
