@@ -4,6 +4,33 @@ const STORAGE_KEYS = {
   session: "ft_session",
 };
 
+const API_BASE = window.APP_CONFIG?.API_BASE || "/api";
+
+async function api(path, options = {}) {
+  const url = `${API_BASE}${path}`;
+  const response = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  });
+
+  const isJson = response.headers
+    .get("Content-Type")
+    ?.includes("application/json");
+
+  const body = isJson ? await response.json() : null;
+
+  if (!response.ok) {
+    const message =
+      body?.message || `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return body;
+}
+
 const loginForm = document.getElementById("login-form");
 const loginIdentifierInput = document.getElementById("login-username");
 const loginPasswordInput = document.getElementById("login-password");
@@ -983,7 +1010,7 @@ function handleReset(event) {
   }
 }
 
-function handleLogin(event) {
+async function handleLogin(event) {
   event.preventDefault();
   const identifier = loginIdentifierInput?.value.trim();
 
@@ -1011,40 +1038,55 @@ function handleLogin(event) {
     loginPasswordInput?.focus();
     return;
   }
-  const users = readUsers();
-  const normalizedIdentifier = (identifier || "").toLowerCase();
-  const phoneDigits = (identifier || "").replace(/\D/g, "");
 
-  const user = users.find((item) => {
-    if (item.password !== password) {
-      return false;
+  try {
+    const result = await api("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({
+        identifier,
+        password,
+      }),
+    });
+
+    if (!result?.success) {
+      showMessage(
+        authMessage,
+        result?.message || "Incorrect username or password.",
+        "error"
+      );
+      return;
     }
 
-    const usernameMatch =
-      item.username && item.username.toLowerCase() === normalizedIdentifier;
-    const emailMatch =
-      item.email && item.email.toLowerCase() === normalizedIdentifier;
-    const storedDigits = String(item.phone || "").replace(/\D/g, "");
-    const storedCountry = String(item.phoneCountry || "").replace(/\D/g, "");
-    const combinedPhone = storedCountry + storedDigits;
-    const phoneMatch =
-      phoneDigits &&
-      ((storedDigits && storedDigits === phoneDigits) ||
-        (combinedPhone && combinedPhone === phoneDigits));
+    // For now, keep session handling on the front-end side
+    // Use the backend response to set currentUser + session
+    const users = readUsers();
+    const lower = (result.username || identifier).toLowerCase();
+    let user = users.find((u) => u.username === lower || u.email === lower);
 
-    return usernameMatch || emailMatch || phoneMatch;
-  });
+    if (!user) {
+      // If this is purely backend-authenticated, we can create a shell user object
+      user = {
+        username: lower,
+        email: lower,
+        displayName: result.displayName || lower,
+      };
+      users.push(user);
+      saveUsers(users);
+    }
 
-  if (!user) {
-    showMessage(authMessage, "Incorrect username or password. Please try again.", "error");
-    return;
+    currentUser = user;
+    setSession(user);
+    loginForm.reset();
+    setLoginStage("identifier");
+    enterLicenseMode();
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      authMessage,
+      error.message || "Unable to sign in right now.",
+      "error"
+    );
   }
-
-  currentUser = user;
-  setSession(user);
-  loginForm.reset();
-  setLoginStage("identifier");
-  enterLicenseMode();
 }
 
 function enterLicenseMode() {
