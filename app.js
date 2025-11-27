@@ -513,7 +513,7 @@ function setSession(user) {
   if (user) {
     localStorage.setItem(
       STORAGE_KEYS.session,
-      JSON.stringify({ username: user.username })
+      JSON.stringify({ username: user.username, isAdmin: !!user.isAdmin })
     );
   } else {
     localStorage.removeItem(STORAGE_KEYS.session);
@@ -523,10 +523,15 @@ function setSession(user) {
 function getSession() {
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEYS.session));
-    return data?.username || null;
+    if (!data || !data.username) return null;
+    return { username: data.username, isAdmin: !!data.isAdmin };
   } catch (error) {
     return null;
   }
+}
+
+function isAdminSession() {
+  return !!currentUser?.isAdmin;
 }
 
 async function fetchUserVehicles(username) {
@@ -536,7 +541,11 @@ async function fetchUserVehicles(username) {
   if (!res.ok) {
     throw new Error("Failed to fetch vehicles");
   }
-  return res.json();
+  const body = await res.json();
+  if (Array.isArray(body)) {
+    return body;
+  }
+  return body?.vehicles || [];
 }
 
 function showMessage(element, text, type = "") {
@@ -942,6 +951,7 @@ async function handleRegister(event) {
         username: lowerEmail,
         email: lowerEmail,
         password,
+        isAdmin: false,
         firstName,
         lastName,
         displayName,
@@ -1117,6 +1127,7 @@ async function handleLogin(event) {
     // Use the backend response to set currentUser + session
     const users = readUsers();
     const lower = (result.username || identifier).toLowerCase();
+    const isAdmin = !!result.admin;
     let user = users.find((u) => u.username === lower || u.email === lower);
 
     if (!user) {
@@ -1126,12 +1137,14 @@ async function handleLogin(event) {
         email: lower,
         displayName: result.displayName || lower,
       };
-      users.push(user);
-      saveUsers(users);
+      if (!isAdmin) {
+        users.push(user);
+        saveUsers(users);
+      }
     }
 
-    currentUser = user;
-    setSession(user);
+    currentUser = { ...user, isAdmin };
+    setSession(currentUser);
     loginForm.reset();
     setLoginStage("identifier");
     enterLicenseMode();
@@ -1222,6 +1235,34 @@ function enterAccountMode() {
   generateCaptcha("account");
   showMessage(accountContactMessage, "");
   showMessage(accountPasswordMessage, "");
+
+  const admin = isAdminSession();
+  const contactElements = [
+    accountEmailInput,
+    accountPhoneCountrySelect,
+    accountPhoneInput,
+    accountCurrentPasswordInput,
+    accountContactForm?.querySelector("button[type='submit']"),
+  ];
+  contactElements.forEach((el) => {
+    if (el) el.disabled = admin;
+  });
+
+  const passwordElements = [
+    accountOldPasswordInput,
+    accountNewPasswordInput,
+    accountConfirmPasswordInput,
+    accountCaptchaInput,
+    accountPasswordForm?.querySelector("button[type='submit']"),
+    accountRefreshCaptchaButton,
+  ];
+  passwordElements.forEach((el) => {
+    if (el) el.disabled = admin;
+  });
+
+  if (accountDeleteButton) {
+    accountDeleteButton.disabled = admin;
+  }
 }
 
 function enterQueryMode() {
@@ -1380,6 +1421,15 @@ function handleAccountContactSubmit(event) {
     return;
   }
 
+  if (isAdminSession()) {
+    showMessage(
+      accountContactMessage,
+      "Admin contact information is managed in configuration.",
+      "error"
+    );
+    return;
+  }
+
   const email = accountEmailInput?.value.trim();
   const lowerEmail = (email || "").toLowerCase();
   const phoneCountry = accountPhoneCountrySelect?.value || "";
@@ -1449,12 +1499,21 @@ function handleAccountContactSubmit(event) {
   showMessage(accountContactMessage, "Contact information updated successfully.", "success");
 }
 
-function handleAccountPasswordSubmit(event) {
-  event.preventDefault();
-  if (!currentUser) {
-    showLoginView();
-    return;
-  }
+  function handleAccountPasswordSubmit(event) {
+    event.preventDefault();
+    if (!currentUser) {
+      showLoginView();
+      return;
+    }
+
+    if (isAdminSession()) {
+      showMessage(
+        accountPasswordMessage,
+        "Admin password can only be changed in backend configuration.",
+        "error"
+      );
+      return;
+    }
 
   const oldPassword = accountOldPasswordInput?.value || "";
   const newPassword = accountNewPasswordInput?.value || "";
@@ -1499,6 +1558,15 @@ function handleAccountPasswordSubmit(event) {
 function handleAccountDelete() {
   if (!currentUser) {
     showLoginView();
+    return;
+  }
+
+  if (isAdminSession()) {
+    showMessage(
+      accountPasswordMessage,
+      "Admin account cannot be deleted from this UI.",
+      "error"
+    );
     return;
   }
 
@@ -1548,6 +1616,8 @@ async function refreshLicenseList() {
 
 function renderVehicleRows(vehicles) {
   if (!vehiclesTableBody) return;
+  const adminView = isAdminSession();
+  const colCount = 8;
   const sorted = [...vehicles].sort(
     (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
   );
@@ -1555,7 +1625,7 @@ function renderVehicleRows(vehicles) {
   if (sorted.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 6;
+    cell.colSpan = colCount;
     cell.textContent = "No vehicles registered yet.";
     row.appendChild(cell);
     vehiclesTableBody.appendChild(row);
@@ -1565,6 +1635,10 @@ function renderVehicleRows(vehicles) {
   sorted.forEach((item) => {
     const row = document.createElement("tr");
     const status = item.blacklisted ? "Blacklisted" : "Not blacklisted";
+    const ownerEmail = adminView ? item.ownerEmail || item.ownerUsername || "" : "";
+    const ownerPhone = adminView
+      ? item.ownerPhone || item.ownerPhoneCountry || ""
+      : "";
 
     const cells = [
       item.licenseNumber,
@@ -1572,6 +1646,8 @@ function renderVehicleRows(vehicles) {
       item.model || "",
       item.year || "",
       status,
+      ownerEmail,
+      ownerPhone,
     ];
 
     cells.forEach((value) => {
@@ -1581,10 +1657,19 @@ function renderVehicleRows(vehicles) {
     });
 
     const actionCell = document.createElement("td");
-    const removeButton = document.createElement("button");
-    removeButton.textContent = "Remove";
-    removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
-    actionCell.appendChild(removeButton);
+    if (adminView) {
+      const toggleButton = document.createElement("button");
+      toggleButton.textContent = item.blacklisted ? "Remove from blacklist" : "Blacklist";
+      toggleButton.addEventListener("click", () =>
+        toggleBlacklist(item.licenseNumber, !item.blacklisted)
+      );
+      actionCell.appendChild(toggleButton);
+    } else {
+      const removeButton = document.createElement("button");
+      removeButton.textContent = "Remove";
+      removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
+      actionCell.appendChild(removeButton);
+    }
     row.appendChild(actionCell);
 
     vehiclesTableBody.appendChild(row);
@@ -1593,6 +1678,14 @@ function renderVehicleRows(vehicles) {
 
 async function removeLicense(licenseNumber) {
   if (!currentUser) return;
+  if (isAdminSession()) {
+    showMessage(
+      licenseMessage,
+      "Admin view cannot remove vehicles from this table.",
+      "error"
+    );
+    return;
+  }
 
   try {
     const res = await apiRequest("/vehicles", {
@@ -1617,6 +1710,39 @@ async function removeLicense(licenseNumber) {
     showMessage(
       licenseMessage,
       error?.message || "Unable to remove license plate.",
+      "error"
+    );
+  }
+}
+
+async function toggleBlacklist(licenseNumber, blacklisted) {
+  if (!currentUser || !isAdminSession()) return;
+
+  try {
+    const res = await apiRequest("/vehicles/blacklist", {
+      method: "POST",
+      body: JSON.stringify({
+        username: currentUser.username,
+        licenseNumber,
+        blacklisted,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.message || "Unable to update blacklist status.");
+    }
+
+    await refreshLicenseList();
+    const successMessage = blacklisted
+      ? "Vehicle blacklisted."
+      : "Vehicle removed from blacklist.";
+    showMessage(licenseMessage, successMessage, "success");
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      licenseMessage,
+      error?.message || "Unable to update blacklist status.",
       "error"
     );
   }
@@ -1756,17 +1882,25 @@ document.addEventListener("DOMContentLoaded", () => {
   drawParallaxRingLogo();
   window.addEventListener("resize", drawParallaxRingLogo);
 
-  const username = getSession();
-  if (!username) {
+  const session = getSession();
+  if (!session || !session.username) {
     return;
   }
 
   const users = readUsers();
-  const user = users.find((item) => item.username === username);
+  const user = users.find((item) => item.username === session.username);
   if (user) {
-    currentUser = user;
+    currentUser = { ...user, isAdmin: !!session.isAdmin };
     enterLicenseMode();
-  } else {
-    setSession(null);
+    return;
   }
+
+  // Allow restoring admin session even if not persisted locally
+  currentUser = {
+    username: session.username,
+    email: session.username,
+    displayName: session.username,
+    isAdmin: !!session.isAdmin,
+  };
+  enterLicenseMode();
 });

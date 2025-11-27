@@ -4,10 +4,12 @@ import com.google.gson.Gson;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import parallax.backend.config.AppConfig;
 import parallax.backend.db.UserRepository;
 import parallax.backend.db.VehicleRepository;
 import parallax.backend.model.User;
 import parallax.backend.model.Vehicle;
+import parallax.backend.model.VehicleWithOwner;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,10 +25,12 @@ public class VehiclesHandler implements HttpHandler {
     private static final Gson gson = new Gson();
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
+    private final AppConfig appConfig;
 
-    public VehiclesHandler(VehicleRepository vehicleRepository, UserRepository userRepository) {
+    public VehiclesHandler(VehicleRepository vehicleRepository, UserRepository userRepository, AppConfig appConfig) {
         this.vehicleRepository = vehicleRepository;
         this.userRepository = userRepository;
+        this.appConfig = appConfig;
     }
 
     @Override
@@ -39,9 +43,16 @@ public class VehiclesHandler implements HttpHandler {
             return;
         }
 
+        String path = exchange.getRequestURI().getPath();
         switch (method.toUpperCase()) {
             case "GET" -> handleGet(exchange);
-            case "POST" -> handlePost(exchange);
+            case "POST" -> {
+                if (path.endsWith("/blacklist")) {
+                    handleBlacklist(exchange);
+                } else {
+                    handlePost(exchange);
+                }
+            }
             case "DELETE" -> handleDelete(exchange);
             default -> exchange.sendResponseHeaders(405, -1);
         }
@@ -51,6 +62,13 @@ public class VehiclesHandler implements HttpHandler {
         String username = getQueryParam(exchange.getRequestURI(), "username");
         if (isBlank(username)) {
             sendJson(exchange, 400, Map.of("message", "USERNAME_REQUIRED"));
+            return;
+        }
+
+        boolean isAdmin = isAdminUser(username);
+        if (isAdmin) {
+            List<VehicleWithOwner> vehicles = vehicleRepository.findAllWithOwners(userRepository);
+            sendJson(exchange, 200, Map.of("vehicles", vehicles));
             return;
         }
 
@@ -109,6 +127,37 @@ public class VehiclesHandler implements HttpHandler {
         sendJson(exchange, 201, newVehicle);
     }
 
+    private void handleBlacklist(HttpExchange exchange) throws IOException {
+        Vehicle request;
+        try (InputStreamReader reader = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8)) {
+            request = gson.fromJson(reader, Vehicle.class);
+        }
+
+        if (request == null || isBlank(request.getUsername()) || isBlank(request.getLicenseNumber())) {
+            sendJson(exchange, 400, Map.of("message", "USERNAME_AND_LICENSE_REQUIRED"));
+            return;
+        }
+
+        if (!isAdminUser(request.getUsername())) {
+            sendJson(exchange, 403, Map.of("message", "ADMIN_ONLY"));
+            return;
+        }
+
+        boolean targetStatus = request.isBlacklisted();
+        Optional<Vehicle> updated = vehicleRepository.updateBlacklistStatus(request.getLicenseNumber(), targetStatus);
+        if (updated.isEmpty()) {
+            sendJson(exchange, 404, Map.of("message", "NOT_FOUND"));
+            return;
+        }
+
+        Vehicle vehicle = updated.get();
+        Map<String, Object> response = Map.of(
+                "licenseNumber", vehicle.getLicenseNumber(),
+                "blacklisted", vehicle.isBlacklisted()
+        );
+        sendJson(exchange, 200, response);
+    }
+
     private void handleDelete(HttpExchange exchange) throws IOException {
         Vehicle request;
         try (InputStreamReader reader = new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8)) {
@@ -154,6 +203,10 @@ public class VehiclesHandler implements HttpHandler {
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private boolean isAdminUser(String username) {
+        return AppConfig.ADMIN_ENABLED && appConfig.ADMIN_EMAIL.equalsIgnoreCase(username);
     }
 
     private void addCorsHeaders(HttpExchange exchange) {
