@@ -779,18 +779,68 @@ main {
   font-size: 18px;
 }
 
+.vehicle-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: flex-end;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.filter-field span {
+  font-size: 14px;
+  color: rgba(29, 29, 31, 0.65);
+}
+
+.filter-field input,
+.filter-field select {
+  border-radius: 10px;
+  border: 1px solid rgba(210, 210, 215, 0.8);
+  padding: 10px 12px;
+  font-size: 15px;
+  background: #fff;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  border-color: rgba(0, 113, 227, 0.7);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+}
+
+.admin-only-filter {
+  display: none;
+}
+
+.license-list-container.admin-view .admin-only-filter {
+  display: flex;
+}
+
 .table-wrapper {
   margin-top: 12px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .vehicles-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
+  table-layout: fixed;
   background: rgba(245, 245, 247, 0.8);
   border: 1px solid rgba(210, 210, 215, 0.6);
   border-radius: 14px;
   overflow: hidden;
+}
+
+.vehicles-table--admin {
+  min-width: 1000px;
 }
 
 .vehicles-table thead {

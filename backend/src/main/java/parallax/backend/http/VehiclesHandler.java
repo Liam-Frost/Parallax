@@ -169,13 +169,25 @@ public class VehiclesHandler implements HttpHandler {
             return;
         }
 
-        Optional<Vehicle> existing = vehicleRepository.findByUsernameAndLicense(request.getUsername(), request.getLicenseNumber());
+        boolean adminRequest = isAdminUser(request.getUsername());
+        Optional<Vehicle> existing = adminRequest
+                ? vehicleRepository.findByLicense(request.getLicenseNumber())
+                : vehicleRepository.findByUsernameAndLicense(request.getUsername(), request.getLicenseNumber());
+
         if (existing.isEmpty()) {
             sendJson(exchange, 404, Map.of("message", "NOT_FOUND"));
             return;
         }
 
-        vehicleRepository.removeVehicle(request.getUsername(), request.getLicenseNumber());
+        if (adminRequest) {
+            boolean removed = vehicleRepository.removeByLicense(request.getLicenseNumber());
+            if (!removed) {
+                sendJson(exchange, 404, Map.of("message", "NOT_FOUND"));
+                return;
+            }
+        } else {
+            vehicleRepository.removeVehicle(request.getUsername(), request.getLicenseNumber());
+        }
         exchange.sendResponseHeaders(204, -1);
     }
 

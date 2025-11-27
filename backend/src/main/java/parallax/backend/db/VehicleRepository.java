@@ -65,6 +65,17 @@ public class VehicleRepository {
         list.removeIf(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()));
     }
 
+    public boolean removeByLicense(String licenseNumber) {
+        if (licenseNumber == null) {
+            return false;
+        }
+        boolean removed = false;
+        for (List<Vehicle> vehicles : vehiclesByUser.values()) {
+            removed |= vehicles.removeIf(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()));
+        }
+        return removed;
+    }
+
     public Optional<Vehicle> updateBlacklistStatus(String licenseNumber, boolean blacklisted) {
         Optional<Vehicle> match = findByLicense(licenseNumber);
         match.ifPresent(vehicle -> vehicle.setBlacklisted(blacklisted));
