@@ -1287,26 +1287,17 @@ function enterAccountMode() {
 }
 
 function enterQueryMode() {
-  if (!currentUser) {
-    setNavSignoutVisibility(false);
-    licenseSection?.classList.add("hidden");
-    accountSection?.classList.add("hidden");
-    querySection?.classList.add("hidden");
-    authShell?.classList.remove("hidden");
-    showLoginView();
-    return;
-  }
+  if (authShell) authShell.classList.add("hidden");
+  if (licenseSection) licenseSection.classList.add("hidden");
+  if (accountSection) accountSection.classList.add("hidden");
+  if (querySection) querySection.classList.remove("hidden");
 
-  authShell?.classList.add("hidden");
-  licenseSection?.classList.add("hidden");
-  accountSection?.classList.add("hidden");
-  querySection?.classList.remove("hidden");
-  setNavSignoutVisibility(true);
-  showMessage(queryMessage, "");
-  queryForm?.reset();
-  if (queryLicenseInput) {
-    queryLicenseInput.focus();
-  }
+  // Clear any previous messages
+  if (queryMessage) showMessage(queryMessage, "");
+
+  // Query page does not depend on login state, so nav signout visibility
+  // should be based solely on whether there is a currentUser / active session
+  setNavSignoutVisibility(!!currentUser);
 }
 
 
@@ -1383,56 +1374,72 @@ async function handleLicenseSubmit(event) {
 
 function handleQuerySubmit(event) {
   event.preventDefault();
+  if (!queryLicenseInput || !queryMessage) return;
 
-  if (!currentUser) {
-    showLoginView();
-    return;
-  }
+  const raw = queryLicenseInput.value.trim().toUpperCase();
 
-  const raw = (queryLicenseInput?.value || "").trim().toUpperCase();
+  // Reuse the same license format as vehicle registration
   if (!LICENSE_PATTERN.test(raw)) {
     showMessage(
       queryMessage,
-      "Enter a valid license plate (1–7 chars, A–Z, 0–9, or hyphen).",
+      "Enter a valid license plate (1–7 characters A–Z, 0–9 or hyphen).",
       "error"
     );
     return;
   }
 
-  const licenses = readLicenses();
-  let found = false;
-  let blacklisted = false;
+  showMessage(queryMessage, "Checking license status…", "");
 
-  Object.values(licenses).forEach((userLicenses) => {
-    (userLicenses || []).forEach((entry) => {
-      if (entry.licenseNumber === raw) {
-        found = true;
-        if (entry.blacklisted) {
-          blacklisted = true;
-        }
+  apiRequest(`/vehicles/query?license=${encodeURIComponent(raw)}`, {
+    method: "GET",
+  })
+    .then((data) => {
+      if (!data || data.found === false) {
+        showMessage(queryMessage, `No records found for plate ${raw}.`, "error");
+        return;
       }
-    });
-  });
 
-  if (!found) {
-    showMessage(
-      queryMessage,
-      `License ${raw} was not found in the system.`,
-      "success"
-    );
-  } else if (blacklisted) {
-    showMessage(
-      queryMessage,
-      `License ${raw} is currently blacklisted.`,
-      "success"
-    );
-  } else {
-    showMessage(
-      queryMessage,
-      `License ${raw} is not blacklisted.`,
-      "success"
-    );
-  }
+      const {
+        licenseNumber,
+        make,
+        model,
+        year,
+        blacklisted,
+        ownerEmail,
+        ownerPhoneCountry,
+        ownerPhone,
+      } = data;
+
+      const statusText = blacklisted ? "Blacklisted" : "Not blacklisted";
+
+      const ownerParts = [];
+      if (ownerEmail) ownerParts.push(ownerEmail);
+      if (ownerPhoneCountry && ownerPhone) {
+        ownerParts.push(`${ownerPhoneCountry} ${ownerPhone}`);
+      }
+      const ownerInfo = ownerParts.length ? ` · Owner: ${ownerParts.join(" / ")}` : "";
+
+      const vehicleInfo = [
+        licenseNumber || raw,
+        make && model ? `${make} ${model}` : make || model || "",
+        year || "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      showMessage(
+        queryMessage,
+        `${vehicleInfo || raw} · Status: ${statusText}${ownerInfo}`,
+        blacklisted ? "error" : "success"
+      );
+    })
+    .catch(() => {
+      showMessage(
+        queryMessage,
+        "Unable to contact server. Please try again later.",
+        "error"
+      );
+    });
 }
 
 function handleAccountContactSubmit(event) {
