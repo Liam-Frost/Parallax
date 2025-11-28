@@ -17,9 +17,13 @@ public class HttpServerApp {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(config.getPort()), 0);
         server.createContext("/api/health", new HealthHandler());
-        server.createContext("/api/auth/login", new AuthLoginHandler(userRepository));
-        server.createContext("/api/auth/register", new AuthRegisterHandler(userRepository));
-        server.createContext("/api/vehicles", new VehiclesHandler(vehicleRepository, userRepository));
+        server.createContext("/api/auth/login", new AuthLoginHandler(userRepository, config));
+        server.createContext("/api/auth/register", new AuthRegisterHandler(userRepository, config));
+        server.createContext("/api/vehicles", new VehiclesHandler(vehicleRepository, userRepository, config));
+        server.createContext(
+                "/api/vehicles/query-image",
+                new PlateImageQueryHandler(config, vehicleRepository)
+        );
         server.setExecutor(Executors.newCachedThreadPool());
 
         System.out.println("Started Parallax backend on port " + config.getPort());

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import parallax.backend.config.AppConfig;
 import parallax.backend.db.UserRepository;
 import parallax.backend.model.LoginRequest;
 import parallax.backend.model.LoginResponse;
@@ -18,9 +19,11 @@ import java.util.Optional;
 public class AuthLoginHandler implements HttpHandler {
     private static final Gson gson = new Gson();
     private final UserRepository userRepository;
+    private final AppConfig appConfig;
 
-    public AuthLoginHandler(UserRepository userRepository) {
+    public AuthLoginHandler(UserRepository userRepository, AppConfig appConfig) {
         this.userRepository = userRepository;
+        this.appConfig = appConfig;
     }
 
     @Override
@@ -51,6 +54,16 @@ public class AuthLoginHandler implements HttpHandler {
             return;
         }
 
+        // Admin login path - validate solely against configuration
+        if (AppConfig.ADMIN_ENABLED
+                && appConfig.ADMIN_EMAIL.equalsIgnoreCase(request.getIdentifier())
+                && appConfig.ADMIN_PASSWORD.equals(request.getPassword())) {
+            LoginResponse adminResponse = new LoginResponse(true, "Login successful", AppConfig.ADMIN_EMAIL, "Admin");
+            adminResponse.setAdmin(true);
+            sendJson(exchange, 200, adminResponse);
+            return;
+        }
+
         Optional<User> user = userRepository.findByIdentifierAndPassword(request.getIdentifier(), request.getPassword());
         if (user.isEmpty()) {
             sendJson(exchange, 401, new LoginResponse(false, "Invalid credentials", null, null));
@@ -59,6 +72,7 @@ public class AuthLoginHandler implements HttpHandler {
 
         User found = user.get();
         LoginResponse response = new LoginResponse(true, "Login successful", found.getUsername(), found.getDisplayName());
+        response.setAdmin(false);
         // TODO: plug in real authentication (sessions / tokens) when SQLite integration arrives
         sendJson(exchange, 200, response);
 

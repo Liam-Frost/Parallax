@@ -658,13 +658,21 @@ main {
   color: #d70015;
 }
 
+.query-divider {
+  height: 1px;
+  background: rgba(210, 210, 215, 0.7);
+  margin: 12px 0 4px;
+}
+
 .support-box {
   font-size: 14px;
   color: rgba(29, 29, 31, 0.7);
 }
 
 .license-panel {
-  margin-top: 80px;
+  margin: 80px auto 0;
+  width: 100%;
+  max-width: 1200px;
   background: #fff;
   border-radius: 22px;
   border: 1px solid rgba(210, 210, 215, 0.7);
@@ -779,18 +787,73 @@ main {
   font-size: 18px;
 }
 
-.table-wrapper {
+.vehicle-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-top: 12px;
+  align-items: flex-end;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.filter-field span {
+  font-size: 14px;
+  color: rgba(29, 29, 31, 0.65);
+}
+
+.filter-field input,
+.filter-field select {
+  border-radius: 10px;
+  border: 1px solid rgba(210, 210, 215, 0.8);
+  padding: 10px 12px;
+  font-size: 15px;
+  background: #fff;
+}
+
+.filter-field input:focus,
+.filter-field select:focus {
+  border-color: rgba(0, 113, 227, 0.7);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+}
+
+.admin-only-filter {
+  display: none;
+}
+
+.license-list-container.admin-view .admin-only-filter {
+  display: flex;
+}
+
+.table-scroll-wrapper {
+  margin-top: 12px;
+  width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .vehicles-table {
   width: 100%;
+  min-width: 850px;
   border-collapse: collapse;
+  table-layout: fixed;
   background: rgba(245, 245, 247, 0.8);
   border: 1px solid rgba(210, 210, 215, 0.6);
   border-radius: 14px;
   overflow: hidden;
+}
+
+.vehicles-table--admin {
+  min-width: 1050px;
+}
+
+body.admin-logged-in .vehicles-table {
+  min-width: 1050px;
 }
 
 .vehicles-table thead {
@@ -803,6 +866,12 @@ main {
   text-align: left;
   font-size: 15px;
   border-bottom: 1px solid rgba(210, 210, 215, 0.6);
+}
+
+.vehicles-table td.owner-cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vehicles-table tr:last-child td {

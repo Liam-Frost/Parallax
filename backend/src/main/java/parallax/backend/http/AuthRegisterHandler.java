@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import parallax.backend.config.AppConfig;
 import parallax.backend.db.UserRepository;
 import parallax.backend.model.RegisterRequest;
 import parallax.backend.model.RegisterResponse;
@@ -19,9 +20,11 @@ import java.util.Optional;
 public class AuthRegisterHandler implements HttpHandler {
     private static final Gson gson = new Gson();
     private final UserRepository userRepository;
+    private final AppConfig appConfig;
 
-    public AuthRegisterHandler(UserRepository userRepository) {
+    public AuthRegisterHandler(UserRepository userRepository, AppConfig appConfig) {
         this.userRepository = userRepository;
+        this.appConfig = appConfig;
     }
 
     @Override
@@ -45,6 +48,11 @@ public class AuthRegisterHandler implements HttpHandler {
 
         if (request == null || isBlank(request.getEmail()) || isBlank(request.getPassword())) {
             sendJson(exchange, 400, new RegisterResponse(false, "EMAIL_AND_PASSWORD_REQUIRED"));
+            return;
+        }
+
+        if (AppConfig.ADMIN_ENABLED && appConfig.ADMIN_EMAIL.equalsIgnoreCase(request.getEmail())) {
+            sendJson(exchange, 400, new RegisterResponse(false, "ADMIN_ACCOUNT_CANNOT_BE_REGISTERED"));
             return;
         }
 
