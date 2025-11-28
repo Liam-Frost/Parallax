@@ -752,6 +752,14 @@ main {
   display: grid;
   gap: 18px;
 }
+#query-image-form p {
+  color: rgba(29, 29, 31, 0.7);
+  margin: -8px 0 8px 0;
+}
+
+#query-image-form h2 {
+  margin: 0;
+}
 
 .license-field {
   display: grid;
