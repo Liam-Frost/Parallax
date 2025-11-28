@@ -19,7 +19,9 @@ public class HttpServerApp {
         server.createContext("/api/health", new HealthHandler());
         server.createContext("/api/auth/login", new AuthLoginHandler(userRepository, config));
         server.createContext("/api/auth/register", new AuthRegisterHandler(userRepository, config));
+        server.createContext("/api/account", new AccountHandler(userRepository, vehicleRepository, config));
         server.createContext("/api/vehicles", new VehiclesHandler(vehicleRepository, userRepository, config));
+        server.createContext("/api/vehicles/query-image", new PlateImageQueryHandler(vehicleRepository, config));
         server.setExecutor(Executors.newCachedThreadPool());
 
         System.out.println("Started Parallax backend on port " + config.getPort());

@@ -6,6 +6,7 @@ public class AppConfig {
     private static final boolean DEFAULT_ADMIN_ENABLED = true;
     private static final String DEFAULT_ADMIN_EMAIL = "admin@parallax.local";
     private static final String DEFAULT_ADMIN_PASSWORD = "Admin1234!";
+    private static final String DEFAULT_PLATE_SERVICE_BASE_URL = "http://localhost:9000";
 
     public static final boolean ADMIN_ENABLED = getBooleanEnv(
             "PARALLAX_ADMIN_ENABLED",
@@ -18,6 +19,11 @@ public class AppConfig {
     public static final String ADMIN_PASSWORD = getEnvOrDefault(
             "PARALLAX_ADMIN_PASSWORD",
             DEFAULT_ADMIN_PASSWORD
+    );
+
+    private final String plateServiceBaseUrl = getEnvOrDefault(
+            "PARALLAX_PLATE_SERVICE_BASE_URL",
+            DEFAULT_PLATE_SERVICE_BASE_URL
     );
 
     public int getPort() {
@@ -38,6 +44,10 @@ public class AppConfig {
             path = DEFAULT_DB_PATH;
         }
         return "jdbc:sqlite:" + path;
+    }
+
+    public String getPlateServiceBaseUrl() {
+        return plateServiceBaseUrl;
     }
 
     private static boolean getBooleanEnv(String key, boolean defaultValue) {

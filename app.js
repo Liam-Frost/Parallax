@@ -106,6 +106,9 @@ const querySection = document.getElementById("query-section");
 const queryForm = document.getElementById("query-form");
 const queryLicenseInput = document.getElementById("query-license-number");
 const queryMessage = document.getElementById("query-message");
+const queryImageForm = document.getElementById("query-image-form");
+const queryImageInput = document.getElementById("query-image-input");
+const queryImageResult = document.getElementById("query-image-result");
 const vehicleFiltersContainer = document.getElementById("vehicle-filters");
 const vehicleSearchInput = document.getElementById("vehicle-filter-search");
 const vehicleBlacklistSelect = document.getElementById("vehicle-filter-blacklist");
@@ -1294,6 +1297,7 @@ function enterQueryMode() {
 
   // Clear any previous messages
   if (queryMessage) showMessage(queryMessage, "");
+  if (queryImageResult) showMessage(queryImageResult, "");
 
   // Query page does not depend on login state, so nav signout visibility
   // should be based solely on whether there is a currentUser / active session
@@ -1372,13 +1376,12 @@ async function handleLicenseSubmit(event) {
   }
 }
 
-function handleQuerySubmit(event) {
+async function handleQuerySubmit(event) {
   event.preventDefault();
   if (!queryLicenseInput || !queryMessage) return;
 
   const raw = queryLicenseInput.value.trim().toUpperCase();
 
-  // Reuse the same license format as vehicle registration
   if (!LICENSE_PATTERN.test(raw)) {
     showMessage(
       queryMessage,
@@ -1390,56 +1393,123 @@ function handleQuerySubmit(event) {
 
   showMessage(queryMessage, "Checking license status…", "");
 
-  apiRequest(`/vehicles/query?license=${encodeURIComponent(raw)}`, {
-    method: "GET",
-  })
-    .then((data) => {
-      if (!data || data.found === false) {
-        showMessage(queryMessage, `No records found for plate ${raw}.`, "error");
-        return;
-      }
+  try {
+    const res = await apiRequest(`/vehicles/query?license=${encodeURIComponent(raw)}`, {
+      method: "GET",
+    });
+    const data = await res.json().catch(() => null);
 
-      const {
-        licenseNumber,
-        make,
-        model,
-        year,
-        blacklisted,
-        ownerEmail,
-        ownerPhoneCountry,
-        ownerPhone,
-      } = data;
-
-      const statusText = blacklisted ? "Blacklisted" : "Not blacklisted";
-
-      const ownerParts = [];
-      if (ownerEmail) ownerParts.push(ownerEmail);
-      if (ownerPhoneCountry && ownerPhone) {
-        ownerParts.push(`${ownerPhoneCountry} ${ownerPhone}`);
-      }
-      const ownerInfo = ownerParts.length ? ` · Owner: ${ownerParts.join(" / ")}` : "";
-
-      const vehicleInfo = [
-        licenseNumber || raw,
-        make && model ? `${make} ${model}` : make || model || "",
-        year || "",
-      ]
-        .filter(Boolean)
-        .join(" · ");
-
+    if (!res.ok || !data?.success) {
       showMessage(
         queryMessage,
-        `${vehicleInfo || raw} · Status: ${statusText}${ownerInfo}`,
-        blacklisted ? "error" : "success"
-      );
-    })
-    .catch(() => {
-      showMessage(
-        queryMessage,
-        "Unable to contact server. Please try again later.",
+        data?.message || "Unable to contact server. Please try again later.",
         "error"
       );
+      return;
+    }
+
+    if (data.found === false) {
+      showMessage(queryMessage, "This plate is not registered in Parallax.", "error");
+      return;
+    }
+
+    const normalized = data.licenseNumber || raw;
+    if (data.blacklisted) {
+      showMessage(
+        queryMessage,
+        `Plate ${normalized} is registered and currently blacklisted.`,
+        "error"
+      );
+      return;
+    }
+
+    showMessage(
+      queryMessage,
+      `Plate ${normalized} is registered and not blacklisted.`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      queryMessage,
+      "Unable to contact server. Please try again later.",
+      "error"
+    );
+  }
+}
+
+async function handleQueryImageSubmit(event) {
+  event.preventDefault();
+  if (!queryImageInput || !queryImageResult) return;
+
+  const file = queryImageInput.files?.[0];
+  if (!file) {
+    showMessage(queryImageResult, "Please select an image to upload.", "error");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  showMessage(queryImageResult, "Analyzing image…", "");
+
+  try {
+    const response = await fetch(`${API_BASE}/vehicles/query-image`, {
+      method: "POST",
+      body: formData,
     });
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.success) {
+      showMessage(
+        queryImageResult,
+        data?.message || "Unable to contact server. Please try again later.",
+        "error"
+      );
+      return;
+    }
+
+    if (data.plateFound === false) {
+      showMessage(
+        queryImageResult,
+        data?.message || "No readable plate found in the image.",
+        "error"
+      );
+      return;
+    }
+
+    const plate = (data.licenseNumber || "").toUpperCase();
+    if (!data.foundInSystem) {
+      showMessage(
+        queryImageResult,
+        `Detected plate: ${plate}. This plate is not registered in Parallax.`,
+        "error"
+      );
+      return;
+    }
+
+    if (data.blacklisted) {
+      showMessage(
+        queryImageResult,
+        `Detected plate: ${plate}. This plate is registered and currently blacklisted.`,
+        "error"
+      );
+      return;
+    }
+
+    showMessage(
+      queryImageResult,
+      `Detected plate: ${plate}. This plate is registered and not blacklisted.`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+    showMessage(
+      queryImageResult,
+      "Unable to contact server. Please try again later.",
+      "error"
+    );
+  }
 }
 
 function handleAccountContactSubmit(event) {
@@ -1464,23 +1534,8 @@ function handleAccountContactSubmit(event) {
   const phoneDigits = (accountPhoneInput?.value || "").replace(/\D/g, "");
   const currentPassword = accountCurrentPasswordInput?.value || "";
 
-  if (currentPassword !== currentUser.password) {
-    showMessage(accountContactMessage, "Incorrect current password.", "error");
-    return;
-  }
-
   if (!EMAIL_PATTERN.test(lowerEmail)) {
     showMessage(accountContactMessage, "Enter a valid email address.", "error");
-    return;
-  }
-
-  const users = readUsers();
-  const emailTaken = users.some(
-    (user) => user.username !== currentUser.username && user.email?.toLowerCase() === lowerEmail
-  );
-
-  if (emailTaken) {
-    showMessage(accountContactMessage, "That email is already in use.", "error");
     return;
   }
 
@@ -1489,69 +1544,88 @@ function handleAccountContactSubmit(event) {
     return;
   }
 
-  const phoneSignature = `${phoneCountry.replace(/\D/g, "")}${phoneDigits}`;
-  const phoneTaken = users.some((user) => {
-    if (user.username === currentUser.username) return false;
-    const storedDigits = String(user.phone || "").replace(/\D/g, "");
-    const storedCountry = String(user.phoneCountry || "").replace(/\D/g, "");
-    return storedDigits && storedCountry + storedDigits === phoneSignature;
-  });
+  const payload = {
+    username: currentUser.username,
+    currentPassword,
+    email: lowerEmail,
+    phoneCountry,
+    phone: phoneDigits,
+  };
 
-  if (phoneTaken) {
-    showMessage(accountContactMessage, "That phone number is already in use.", "error");
+  apiRequest(`/account/contact`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+    .then((response) => response.json().catch(() => null).then((data) => ({ response, data })))
+    .then(({ response, data }) => {
+      if (!response?.ok || !data?.success) {
+        showMessage(
+          accountContactMessage,
+          data?.message || "Unable to update contact details right now.",
+          "error"
+        );
+        return;
+      }
+
+      const updatedUser = {
+        ...currentUser,
+        ...data.user,
+        password: currentUser.password,
+      };
+
+      const users = readUsers();
+      let found = false;
+      const mapped = users.map((user) => {
+        if (user.username === currentUser.username) {
+          found = true;
+          return { ...user, ...data.user };
+        }
+        return user;
+      });
+      if (!found) {
+        mapped.push({ ...data.user });
+      }
+      saveUsers(mapped);
+
+      currentUser = { ...updatedUser, isAdmin: currentUser.isAdmin };
+      setSession(currentUser);
+      populateAccountFields();
+      showMessage(
+        accountContactMessage,
+        "Contact information updated successfully.",
+        "success"
+      );
+    })
+    .catch((error) => {
+      console.error(error);
+      showMessage(
+        accountContactMessage,
+        "Unable to update contact details right now.",
+        "error"
+      );
+    });
+}
+
+function handleAccountPasswordSubmit(event) {
+  event.preventDefault();
+  if (!currentUser) {
+    showLoginView();
     return;
   }
 
-  const oldUsername = currentUser.username;
-  currentUser.email = lowerEmail;
-  currentUser.username = lowerEmail;
-  currentUser.phoneCountry = phoneCountry;
-  currentUser.phone = phoneDigits;
-
-  const updatedUsers = users.map((user) =>
-    user.username === oldUsername ? { ...user, ...currentUser } : user
-  );
-  saveUsers(updatedUsers);
-
-  const licenses = readLicenses();
-  if (lowerEmail !== oldUsername && licenses[oldUsername]) {
-    licenses[lowerEmail] = licenses[oldUsername];
-    delete licenses[oldUsername];
-    saveLicenses(licenses);
-  } else if (lowerEmail === oldUsername) {
-    saveLicenses(licenses);
+  if (isAdminSession()) {
+    showMessage(
+      accountPasswordMessage,
+      "Admin password can only be changed in backend configuration.",
+      "error"
+    );
+    return;
   }
-
-  setSession(currentUser);
-  populateAccountFields();
-  showMessage(accountContactMessage, "Contact information updated successfully.", "success");
-}
-
-  function handleAccountPasswordSubmit(event) {
-    event.preventDefault();
-    if (!currentUser) {
-      showLoginView();
-      return;
-    }
-
-    if (isAdminSession()) {
-      showMessage(
-        accountPasswordMessage,
-        "Admin password can only be changed in backend configuration.",
-        "error"
-      );
-      return;
-    }
 
   const oldPassword = accountOldPasswordInput?.value || "";
   const newPassword = accountNewPasswordInput?.value || "";
   const confirmPassword = accountConfirmPasswordInput?.value || "";
   const captchaValue = accountCaptchaInput?.value || "";
-
-  if (oldPassword !== currentUser.password) {
-    showMessage(accountPasswordMessage, "Incorrect current password.", "error");
-    return;
-  }
 
   if (!PASSWORD_PATTERN.test(newPassword)) {
     showMessage(
@@ -1573,14 +1647,43 @@ function handleAccountContactSubmit(event) {
     return;
   }
 
-  currentUser.password = newPassword;
-  const users = readUsers().map((user) =>
-    user.username === currentUser.username ? { ...user, password: newPassword } : user
-  );
-  saveUsers(users);
-  generateCaptcha("account");
-  populateAccountFields();
-  showMessage(accountPasswordMessage, "Password changed successfully.", "success");
+  apiRequest(`/account/password`, {
+    method: "POST",
+    body: JSON.stringify({
+      username: currentUser.username,
+      oldPassword,
+      newPassword,
+      confirmPassword,
+    }),
+  })
+    .then((response) => response.json().catch(() => null).then((data) => ({ response, data })))
+    .then(({ response, data }) => {
+      if (!response?.ok || !data?.success) {
+        showMessage(
+          accountPasswordMessage,
+          data?.message || "Unable to change password right now.",
+          "error"
+        );
+        return;
+      }
+
+      const users = readUsers().map((user) =>
+        user.username === currentUser.username ? { ...user, password: newPassword } : user
+      );
+      saveUsers(users);
+      currentUser = { ...currentUser, password: newPassword };
+      generateCaptcha("account");
+      populateAccountFields();
+      showMessage(accountPasswordMessage, "Password changed successfully.", "success");
+    })
+    .catch((error) => {
+      console.error(error);
+      showMessage(
+        accountPasswordMessage,
+        "Unable to change password right now.",
+        "error"
+      );
+    });
 }
 
 function handleAccountDelete() {
@@ -1604,22 +1707,47 @@ function handleAccountDelete() {
 
   if (!confirmation) return;
 
-  const users = readUsers().filter((user) => user.username !== currentUser.username);
-  saveUsers(users);
+  const currentPassword = accountOldPasswordInput?.value || "";
 
-  const licenses = readLicenses();
-  delete licenses[currentUser.username];
-  saveLicenses(licenses);
+  apiRequest(`/account`, {
+    method: "DELETE",
+    body: JSON.stringify({
+      username: currentUser.username,
+      currentPassword,
+    }),
+  })
+    .then((response) => response.json().catch(() => null).then((data) => ({ response, data })))
+    .then(({ response, data }) => {
+      if (!response?.ok || !data?.success) {
+        showMessage(
+          accountPasswordMessage,
+          data?.message || "Unable to delete account right now.",
+          "error"
+        );
+        return;
+      }
 
-  setSession(null);
-  currentUser = null;
-  licenseSection?.classList.add("hidden");
-  accountSection?.classList.add("hidden");
-  querySection?.classList.add("hidden");
-  authShell?.classList.remove("hidden");
-  setNavSignoutVisibility(false);
-  showLoginView();
-  showMessage(authMessage, "Your account has been deleted.", "success");
+      const users = readUsers().filter((user) => user.username !== currentUser.username);
+      saveUsers(users);
+
+      setSession(null);
+      currentUser = null;
+      licenseSection?.classList.add("hidden");
+      accountSection?.classList.add("hidden");
+      querySection?.classList.add("hidden");
+      authShell?.classList.remove("hidden");
+      setNavSignoutVisibility(false);
+      showLoginView();
+      showMessage(authMessage, "Your account has been deleted.", "success");
+    })
+    .catch((error) => {
+      console.error(error);
+      showMessage(
+        accountPasswordMessage,
+        "Unable to delete account right now.",
+        "error"
+      );
+    });
 }
 
 function setAdminBodyState(adminView) {
@@ -1997,6 +2125,8 @@ accountDeleteButton?.addEventListener("click", (event) => {
 
 // Query form
 queryForm?.addEventListener("submit", handleQuerySubmit);
+queryImageForm?.addEventListener("submit", handleQueryImageSubmit);
+queryImageForm?.addEventListener("submit", handleQueryImageSubmit);
 
 navAccountLink?.addEventListener("click", (event) => {
   event.preventDefault();

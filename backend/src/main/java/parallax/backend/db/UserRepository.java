@@ -72,6 +72,50 @@ public class UserRepository {
         return user;
     }
 
+    public Optional<User> updateContact(String username, String newEmail, String phoneCountry, String phone) {
+        if (username == null || newEmail == null) {
+            return Optional.empty();
+        }
+
+        String key = username.toLowerCase();
+        User existing = users.get(key);
+        if (existing == null) {
+            return Optional.empty();
+        }
+
+        String newKey = newEmail.toLowerCase();
+        existing.setUsername(newKey);
+        existing.setEmail(newKey);
+        existing.setPhoneCountry(phoneCountry);
+        existing.setPhone(phone);
+
+        if (!newKey.equals(key)) {
+            users.remove(key);
+            users.put(newKey, existing);
+        }
+
+        return Optional.of(existing);
+    }
+
+    public Optional<User> updatePassword(String username, String newPassword) {
+        if (username == null || newPassword == null) {
+            return Optional.empty();
+        }
+        User existing = users.get(username.toLowerCase());
+        if (existing == null) {
+            return Optional.empty();
+        }
+        existing.setPassword(newPassword);
+        return Optional.of(existing);
+    }
+
+    public boolean deleteUser(String username) {
+        if (username == null) {
+            return false;
+        }
+        return users.remove(username.toLowerCase()) != null;
+    }
+
     public Map<String, User> findAllUsers() {
         // Helper primarily for testing/debugging
         return users.values().stream().collect(Collectors.toUnmodifiableMap(User::getUsername, u -> u));

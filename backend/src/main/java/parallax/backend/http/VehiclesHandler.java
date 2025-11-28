@@ -200,34 +200,28 @@ public class VehiclesHandler implements HttpHandler {
     private void handleQuery(HttpExchange exchange) throws IOException {
         String license = getQueryParam(exchange.getRequestURI(), "license");
         if (isBlank(license)) {
-            sendJson(exchange, 400, Map.of("message", "LICENSE_REQUIRED"));
+            sendJson(exchange, 400, Map.of("success", false, "message", "LICENSE_REQUIRED"));
             return;
         }
 
         String normalizedLicense = normalizeLicense(license);
         Optional<Vehicle> match = vehicleRepository.findByPlate(normalizedLicense);
         if (match.isEmpty()) {
-            sendJson(exchange, 200, Map.of("found", false));
+            sendJson(exchange, 200, Map.of(
+                    "success", true,
+                    "found", false,
+                    "licenseNumber", normalizedLicense,
+                    "blacklisted", false
+            ));
             return;
         }
 
         Vehicle vehicle = match.get();
         Map<String, Object> response = new java.util.HashMap<>();
+        response.put("success", true);
         response.put("found", true);
         response.put("licenseNumber", vehicle.getLicenseNumber());
-        response.put("make", vehicle.getMake());
-        response.put("model", vehicle.getModel());
-        response.put("year", vehicle.getYear());
         response.put("blacklisted", vehicle.isBlacklisted());
-
-        String ownerKey = vehicle.getUsername();
-        if (ownerKey != null) {
-            userRepository.findByEmail(ownerKey).ifPresent(owner -> {
-                response.put("ownerEmail", owner.getEmail());
-                response.put("ownerPhoneCountry", owner.getPhoneCountry());
-                response.put("ownerPhone", owner.getPhone());
-            });
-        }
 
         sendJson(exchange, 200, response);
     }

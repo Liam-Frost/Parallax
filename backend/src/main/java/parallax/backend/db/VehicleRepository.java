@@ -22,6 +22,25 @@ public class VehicleRepository {
         return licenseNumber.trim().toUpperCase();
     }
 
+    public List<Vehicle> reassignVehicles(String oldUsername, String newUsername) {
+        if (oldUsername == null || newUsername == null) {
+            return Collections.emptyList();
+        }
+
+        String oldKey = oldUsername.toLowerCase();
+        String newKey = newUsername.toLowerCase();
+
+        List<Vehicle> existing = vehiclesByUser.remove(oldKey);
+        if (existing == null || existing.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        existing.forEach(vehicle -> vehicle.setUsername(newUsername));
+        vehiclesByUser.computeIfAbsent(newKey, k -> Collections.synchronizedList(new ArrayList<>()))
+                .addAll(existing);
+        return new ArrayList<>(existing);
+    }
+
     public List<Vehicle> findByUsername(String username) {
         if (username == null) {
             return Collections.emptyList();
@@ -77,6 +96,13 @@ public class VehicleRepository {
             return;
         }
         list.removeIf(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())));
+    }
+
+    public void removeVehiclesForUser(String username) {
+        if (username == null) {
+            return;
+        }
+        vehiclesByUser.remove(username.toLowerCase());
     }
 
     public boolean removeByLicense(String licenseNumber) {
