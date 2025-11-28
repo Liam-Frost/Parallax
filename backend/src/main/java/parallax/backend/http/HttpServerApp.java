@@ -2,6 +2,8 @@ package parallax.backend.http;
 
 import com.sun.net.httpserver.HttpServer;
 import parallax.backend.config.AppConfig;
+import parallax.backend.db.InMemoryUserRepository;
+import parallax.backend.db.InMemoryVehicleRepository;
 import parallax.backend.db.UserRepository;
 import parallax.backend.db.VehicleRepository;
 
@@ -12,8 +14,10 @@ import java.util.concurrent.Executors;
 public class HttpServerApp {
     public static void main(String[] args) throws IOException {
         AppConfig config = new AppConfig();
-        UserRepository userRepository = new UserRepository();
-        VehicleRepository vehicleRepository = new VehicleRepository();
+        // TODO: when SQLite persistence is ready, replace InMemoryUserRepository / InMemoryVehicleRepository
+        // with SQLiteUserRepository / SQLiteVehicleRepository that implement the same interfaces.
+        UserRepository userRepository = new InMemoryUserRepository();
+        VehicleRepository vehicleRepository = new InMemoryVehicleRepository();
 
         HttpServer server = HttpServer.create(new InetSocketAddress(config.getPort()), 0);
         server.createContext("/api/health", new HealthHandler());
