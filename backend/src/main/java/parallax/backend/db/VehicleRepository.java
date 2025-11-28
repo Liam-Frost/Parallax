@@ -15,6 +15,13 @@ public class VehicleRepository {
     // TODO: replace in-memory map with real SQLite queries using DataSource
     private final Map<String, List<Vehicle>> vehiclesByUser = new ConcurrentHashMap<>();
 
+    private String normalizeLicense(String licenseNumber) {
+        if (licenseNumber == null) {
+            return null;
+        }
+        return licenseNumber.trim().toUpperCase();
+    }
+
     public List<Vehicle> findByUsername(String username) {
         if (username == null) {
             return Collections.emptyList();
@@ -24,23 +31,29 @@ public class VehicleRepository {
     }
 
     public Optional<Vehicle> findByUsernameAndLicense(String username, String licenseNumber) {
-        if (username == null || licenseNumber == null) {
+        String normalizedLicense = normalizeLicense(licenseNumber);
+        if (username == null || normalizedLicense == null) {
             return Optional.empty();
         }
         // TODO: replace with SELECT query filtered by username + license
         return vehiclesByUser.getOrDefault(username.toLowerCase(), Collections.emptyList())
                 .stream()
-                .filter(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()))
+                .filter(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())))
                 .findFirst();
     }
 
     public Optional<Vehicle> findByLicense(String licenseNumber) {
-        if (licenseNumber == null) {
+        return findByPlate(licenseNumber);
+    }
+
+    public Optional<Vehicle> findByPlate(String licenseNumber) {
+        String normalizedLicense = normalizeLicense(licenseNumber);
+        if (normalizedLicense == null) {
             return Optional.empty();
         }
         return vehiclesByUser.values().stream()
                 .flatMap(List::stream)
-                .filter(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()))
+                .filter(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())))
                 .findFirst();
     }
 
@@ -54,7 +67,8 @@ public class VehicleRepository {
     }
 
     public void removeVehicle(String username, String licenseNumber) {
-        if (username == null || licenseNumber == null) {
+        String normalizedLicense = normalizeLicense(licenseNumber);
+        if (username == null || normalizedLicense == null) {
             return;
         }
         // TODO: replace with DELETE against SQLite
@@ -62,16 +76,17 @@ public class VehicleRepository {
         if (list == null) {
             return;
         }
-        list.removeIf(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()));
+        list.removeIf(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())));
     }
 
     public boolean removeByLicense(String licenseNumber) {
-        if (licenseNumber == null) {
+        String normalizedLicense = normalizeLicense(licenseNumber);
+        if (normalizedLicense == null) {
             return false;
         }
         boolean removed = false;
         for (List<Vehicle> vehicles : vehiclesByUser.values()) {
-            removed |= vehicles.removeIf(v -> licenseNumber.equalsIgnoreCase(v.getLicenseNumber()));
+            removed |= vehicles.removeIf(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())));
         }
         return removed;
     }

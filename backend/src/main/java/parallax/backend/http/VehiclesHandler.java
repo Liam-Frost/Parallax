@@ -45,7 +45,13 @@ public class VehiclesHandler implements HttpHandler {
 
         String path = exchange.getRequestURI().getPath();
         switch (method.toUpperCase()) {
-            case "GET" -> handleGet(exchange);
+            case "GET" -> {
+                if (path.endsWith("/query")) {
+                    handleQuery(exchange);
+                } else {
+                    handleGet(exchange);
+                }
+            }
             case "POST" -> {
                 if (path.endsWith("/blacklist")) {
                     handleBlacklist(exchange);
@@ -116,7 +122,7 @@ public class VehiclesHandler implements HttpHandler {
 
         Vehicle newVehicle = new Vehicle();
         newVehicle.setUsername(request.getUsername().toLowerCase());
-        newVehicle.setLicenseNumber(request.getLicenseNumber().toUpperCase());
+        newVehicle.setLicenseNumber(normalizeLicense(request.getLicenseNumber()));
         newVehicle.setMake(request.getMake());
         newVehicle.setModel(request.getModel());
         newVehicle.setYear(request.getYear());
@@ -191,12 +197,54 @@ public class VehiclesHandler implements HttpHandler {
         exchange.sendResponseHeaders(204, -1);
     }
 
+    private void handleQuery(HttpExchange exchange) throws IOException {
+        String license = getQueryParam(exchange.getRequestURI(), "license");
+        if (isBlank(license)) {
+            sendJson(exchange, 400, Map.of("message", "LICENSE_REQUIRED"));
+            return;
+        }
+
+        String normalizedLicense = normalizeLicense(license);
+        Optional<Vehicle> match = vehicleRepository.findByPlate(normalizedLicense);
+        if (match.isEmpty()) {
+            sendJson(exchange, 200, Map.of("found", false));
+            return;
+        }
+
+        Vehicle vehicle = match.get();
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("found", true);
+        response.put("licenseNumber", vehicle.getLicenseNumber());
+        response.put("make", vehicle.getMake());
+        response.put("model", vehicle.getModel());
+        response.put("year", vehicle.getYear());
+        response.put("blacklisted", vehicle.isBlacklisted());
+
+        String ownerKey = vehicle.getUsername();
+        if (ownerKey != null) {
+            userRepository.findByEmail(ownerKey).ifPresent(owner -> {
+                response.put("ownerEmail", owner.getEmail());
+                response.put("ownerPhoneCountry", owner.getPhoneCountry());
+                response.put("ownerPhone", owner.getPhone());
+            });
+        }
+
+        sendJson(exchange, 200, response);
+    }
+
     private boolean isValidLicense(String licenseNumber) {
-        if (isBlank(licenseNumber)) {
+        String trimmed = normalizeLicense(licenseNumber);
+        if (isBlank(trimmed)) {
             return false;
         }
-        String trimmed = licenseNumber.trim();
         return trimmed.length() >= 1 && trimmed.length() <= 7 && trimmed.matches("[A-Z0-9-]+");
+    }
+
+    private String normalizeLicense(String licenseNumber) {
+        if (licenseNumber == null) {
+            return null;
+        }
+        return licenseNumber.trim().toUpperCase();
     }
 
     private String getQueryParam(URI uri, String key) {
