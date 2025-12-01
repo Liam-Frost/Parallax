@@ -11,7 +11,23 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
+/**
+ * Main entry point wiring together configuration, repositories, and HTTP handlers.
+ * <p>
+ * This bootstrap uses in-memory repositories for users and vehicles, registers all REST handlers
+ * under the {@code /api} prefix, and starts the embedded {@link HttpServer}. When persistent
+ * storage is introduced, the in-memory repositories can be swapped for SQLite-backed versions
+ * without altering the routing logic.
+ * </p>
+ */
 public class HttpServerApp {
+    /**
+     * Launches the HTTP server, registering routes for authentication, accounts, vehicles,
+     * plate-image queries, and health checks.
+     *
+     * @param args ignored command-line arguments
+     * @throws IOException if the server socket cannot be opened
+     */
     public static void main(String[] args) throws IOException {
         AppConfig config = new AppConfig();
         // TODO: when SQLite persistence is ready, replace InMemoryUserRepository / InMemoryVehicleRepository
