@@ -143,7 +143,7 @@ public class PlateImageQueryHandler implements HttpHandler {
      * @throws IOException          if the request cannot be built or read
      * @throws InterruptedException if the HTTP client is interrupted while waiting for a response
      */
-    private JsonObject callPythonService(Path imagePath) throws IOException, InterruptedException {
+    protected JsonObject callPythonService(Path imagePath) throws IOException, InterruptedException {
         String boundary = "----Parallax" + UUID.randomUUID();
         ByteArrayOutputStream body = new ByteArrayOutputStream();
         StringBuilder sb = new StringBuilder();

@@ -35,6 +35,19 @@ public class HttpServerApp {
         UserRepository userRepository = new InMemoryUserRepository();
         VehicleRepository vehicleRepository = new InMemoryVehicleRepository();
 
+        startServer(config, userRepository, vehicleRepository);
+    }
+
+    /**
+     * Creates and starts the HTTP server using the provided configuration and repositories.
+     *
+     * @param config            configuration supplying port and external endpoints
+     * @param userRepository    repository backing authentication and account operations
+     * @param vehicleRepository repository backing vehicle management
+     * @return the started {@link HttpServer}
+     * @throws IOException if the server socket cannot be opened
+     */
+    public static HttpServer startServer(AppConfig config, UserRepository userRepository, VehicleRepository vehicleRepository) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(config.getPort()), 0);
         server.createContext("/api/health", new HealthHandler());
         server.createContext("/api/auth/login", new AuthLoginHandler(userRepository, config));
@@ -46,5 +59,6 @@ public class HttpServerApp {
 
         System.out.println("Started Parallax backend on port " + config.getPort());
         server.start();
+        return server;
     }
 }
