@@ -7,6 +7,7 @@ import parallax.backend.model.VehicleWithOwner;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +28,7 @@ public class InMemoryVehicleRepository implements VehicleRepository {
         if (licenseNumber == null) {
             return null;
         }
-        return licenseNumber.trim().toUpperCase();
+        return licenseNumber.trim().toUpperCase(Locale.ROOT);
     }
 
     /**
@@ -43,8 +44,8 @@ public class InMemoryVehicleRepository implements VehicleRepository {
             return Collections.emptyList();
         }
 
-        String oldKey = oldUsername.toLowerCase();
-        String newKey = newUsername.toLowerCase();
+        String oldKey = oldUsername.toLowerCase(Locale.ROOT);
+        String newKey = newUsername.toLowerCase(Locale.ROOT);
 
         List<Vehicle> existing = vehiclesByUser.remove(oldKey);
         if (existing == null || existing.isEmpty()) {
@@ -66,7 +67,7 @@ public class InMemoryVehicleRepository implements VehicleRepository {
             return Collections.emptyList();
         }
         // TODO: replace with SELECT query filtered by username
-        return new ArrayList<>(vehiclesByUser.getOrDefault(username.toLowerCase(), Collections.emptyList()));
+        return new ArrayList<>(vehiclesByUser.getOrDefault(username.toLowerCase(Locale.ROOT), Collections.emptyList()));
     }
 
     /**
@@ -79,7 +80,7 @@ public class InMemoryVehicleRepository implements VehicleRepository {
             return Optional.empty();
         }
         // TODO: replace with SELECT query filtered by username + license
-        return vehiclesByUser.getOrDefault(username.toLowerCase(), Collections.emptyList())
+        return vehiclesByUser.getOrDefault(username.toLowerCase(Locale.ROOT), Collections.emptyList())
                 .stream()
                 .filter(v -> normalizedLicense.equals(normalizeLicense(v.getLicenseNumber())))
                 .findFirst();
@@ -120,9 +121,16 @@ public class InMemoryVehicleRepository implements VehicleRepository {
         if (vehicle == null || vehicle.getUsername() == null) {
             throw new IllegalArgumentException("Vehicle and username must not be null");
         }
+
+        // 关键修改：写入前规范化车牌为大写，保证后面读出来也是 ABC123 这种形式
+        String normalizedLicense = normalizeLicense(vehicle.getLicenseNumber());
+        vehicle.setLicenseNumber(normalizedLicense);
+
         // TODO: replace with INSERT against SQLite
-        String key = vehicle.getUsername().toLowerCase();
-        vehiclesByUser.computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>())).add(vehicle);
+        String key = vehicle.getUsername().toLowerCase(Locale.ROOT);
+        vehiclesByUser
+                .computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>()))
+                .add(vehicle);
     }
 
     /**
@@ -135,7 +143,7 @@ public class InMemoryVehicleRepository implements VehicleRepository {
             return;
         }
         // TODO: replace with DELETE against SQLite
-        List<Vehicle> list = vehiclesByUser.get(username.toLowerCase());
+        List<Vehicle> list = vehiclesByUser.get(username.toLowerCase(Locale.ROOT));
         if (list == null) {
             return;
         }
@@ -150,7 +158,7 @@ public class InMemoryVehicleRepository implements VehicleRepository {
         if (username == null) {
             return;
         }
-        vehiclesByUser.remove(username.toLowerCase());
+        vehiclesByUser.remove(username.toLowerCase(Locale.ROOT));
     }
 
     /**
