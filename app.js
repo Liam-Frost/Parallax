@@ -100,15 +100,16 @@ const accountRefreshCaptchaButton = document.getElementById(
   "account-refresh-captcha"
 );
 const accountDeleteButton = document.getElementById("account-delete");
+const refreshButton = document.getElementById("refresh-button");
 const navAccountLink = document.getElementById("nav-account");
 const navQueryLink = document.getElementById("nav-query");
 const querySection = document.getElementById("query-section");
 const queryForm = document.getElementById("query-form");
 const queryLicenseInput = document.getElementById("query-license-number");
 const queryMessage = document.getElementById("query-message");
+const queryImageResult = document.getElementById("query-image-result");
 const queryImageForm = document.getElementById("query-image-form");
 const queryImageInput = document.getElementById("query-image-input");
-const queryImageResult = document.getElementById("query-image-result");
 const vehicleFiltersContainer = document.getElementById("vehicle-filters");
 const vehicleSearchInput = document.getElementById("vehicle-filter-search");
 const vehicleBlacklistSelect = document.getElementById("vehicle-filter-blacklist");
@@ -421,6 +422,15 @@ const ringCfg = {
   ringStartAngle: (-10 * Math.PI / 180),
 };
 
+function clearAllMessagesAndForms() {
+  showMessage(queryMessage, "");
+  showMessage(queryImageResult, "");
+  queryForm?.reset();
+  queryImageForm?.reset();
+  setStatusPill("query-status", "hidden");
+  setStatusPill("query-image-status", "hidden");
+}
+
 function drawParallaxRingLogo() {
   const canvas = document.getElementById("parallax-ring-mask");
   if (!canvas) return;
@@ -569,11 +579,65 @@ async function fetchUserVehicles(username) {
 }
 
 function showMessage(element, text, type = "") {
-  element.textContent = text;
-  element.classList.remove("success", "error");
-  if (type) {
-    element.classList.add(type);
+  if (!element) return;
+
+  const t = (type || "info").toLowerCase();
+
+  let stateClass = "message--info";
+  if (t === "success") stateClass = "message--success";
+  else if (t === "error") stateClass = "message--error";
+  else if (t === "pending") stateClass = "message--pending";
+  else if (t === "blacklisted") stateClass = "message--blacklisted";
+
+  if (!text) {
+    element.className = "message message--empty";
+    element.innerHTML = "";
+    return;
   }
+
+  element.className = `message ${stateClass}`;
+
+  const icons = {
+    info: `
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.12"></circle>
+        <circle cx="8" cy="4.5" r="1.1" fill="currentColor"></circle>
+        <rect x="7.25" y="6.4" width="1.5" height="5.5" rx="0.75" fill="currentColor"></rect>
+      </svg>
+    `,
+    pending: `
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.7"></circle>
+        <path d="M8 3.2a4.8 4.8 0 1 1-3.4 1.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path>
+      </svg>
+    `,
+    success: `
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.12"></circle>
+        <path d="M4.3 8.1 6.7 10.5 11.7 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+    `,
+    error: `
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 2.1 2.4 13.9h11.2L8 2.1z" fill="currentColor" opacity="0.12"></path>
+        <path d="M8 5.1v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+        <circle cx="8" cy="11.1" r="0.9" fill="currentColor"></circle>
+      </svg>
+    `,
+    blacklisted: `
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.12"></circle>
+        <path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+      </svg>
+    `,
+  };
+
+  const icon = icons[t] || icons.info;
+
+  element.innerHTML = `
+    <span class="message__icon">${icon}</span>
+    <span class="message__text">${text}</span>
+  `;
 }
 
 function updateBirthDayOptions(preserveSelection = true) {
@@ -671,7 +735,7 @@ function populateVehicleSelects() {
   vehicleMakeSelect.innerHTML = "";
   const makePlaceholder = document.createElement("option");
   makePlaceholder.value = "";
-  makePlaceholder.textContent = "Select manufacturer";
+  makePlaceholder.textContent = "Select make";
   makePlaceholder.disabled = true;
   makePlaceholder.selected = true;
   vehicleMakeSelect.appendChild(makePlaceholder);
@@ -1295,12 +1359,9 @@ function enterQueryMode() {
   if (accountSection) accountSection.classList.add("hidden");
   if (querySection) querySection.classList.remove("hidden");
 
-  // Clear any previous messages
-  if (queryMessage) showMessage(queryMessage, "");
-  if (queryImageResult) showMessage(queryImageResult, "");
+  showMessage(queryMessage, "");
+  showMessage(queryImageResult, "");
 
-  // Query page does not depend on login state, so nav signout visibility
-  // should be based solely on whether there is a currentUser / active session
   setNavSignoutVisibility(!!currentUser);
 }
 
@@ -1378,7 +1439,7 @@ async function handleLicenseSubmit(event) {
 
 async function handleQuerySubmit(event) {
   event.preventDefault();
-  if (!queryLicenseInput || !queryMessage) return;
+  if (!queryLicenseInput) return;
 
   const raw = queryLicenseInput.value.trim().toUpperCase();
 
@@ -1391,41 +1452,50 @@ async function handleQuerySubmit(event) {
     return;
   }
 
-  showMessage(queryMessage, "Checking license status…", "");
+  // pending
+  showMessage(queryMessage, "Checking license status…", "pending");
 
   try {
-    const res = await apiRequest(`/vehicles/query?license=${encodeURIComponent(raw)}`, {
-      method: "GET",
-    });
+    const res = await apiRequest(
+      `/vehicles/query?license=${encodeURIComponent(raw)}`,
+      { method: "GET" }
+    );
     const data = await res.json().catch(() => null);
 
     if (!res.ok || !data?.success) {
       showMessage(
         queryMessage,
-        data?.message || "Unable to contact server. Please try again later.",
+        data?.message ||
+          "Unable to contact server. Please try again later.",
         "error"
       );
-      return;
-    }
-
-    if (data.found === false) {
-      showMessage(queryMessage, "This plate is not registered in Parallax.", "error");
       return;
     }
 
     const normalized = data.licenseNumber || raw;
-    if (data.blacklisted) {
+    const plateTag = `<span class="plate-code">${normalized}</span>`;
+    
+    if (data.found === false) {
       showMessage(
         queryMessage,
-        `Plate ${normalized} is registered and currently blacklisted.`,
+        `This plate ${plateTag} is not registered in Parallax.`,
         "error"
       );
       return;
     }
-
+    
+    if (data.blacklisted) {
+      showMessage(
+        queryMessage,
+        `Plate ${plateTag} is registered and currently blacklisted.`,
+        "error"
+      );
+      return;
+    }
+    
     showMessage(
       queryMessage,
-      `Plate ${normalized} is registered and not blacklisted.`,
+      `Plate ${plateTag} is registered and not blacklisted.`,
       "success"
     );
   } catch (error) {
@@ -1440,7 +1510,7 @@ async function handleQuerySubmit(event) {
 
 async function handleQueryImageSubmit(event) {
   event.preventDefault();
-  if (!queryImageInput || !queryImageResult) return;
+  if (!queryImageInput) return;
 
   const file = queryImageInput.files?.[0];
   if (!file) {
@@ -1451,7 +1521,7 @@ async function handleQueryImageSubmit(event) {
   const formData = new FormData();
   formData.append("image", file);
 
-  showMessage(queryImageResult, "Analyzing image…", "");
+  showMessage(queryImageResult, "Analyzing image…", "pending");
 
   try {
     const response = await fetch(`${API_BASE}/vehicles/query-image`, {
@@ -1463,26 +1533,20 @@ async function handleQueryImageSubmit(event) {
     if (!response.ok || !data?.success) {
       showMessage(
         queryImageResult,
-        data?.message || "Unable to contact server. Please try again later.",
-        "error"
-      );
-      return;
-    }
-
-    if (data.plateFound === false) {
-      showMessage(
-        queryImageResult,
-        data?.message || "No readable plate found in the image.",
+        data?.message ||
+          "Unable to contact server. Please try again later.",
         "error"
       );
       return;
     }
 
     const plate = (data.licenseNumber || "").toUpperCase();
+    const plateTag = `<span class="plate-code">${plate}</span>`;
+
     if (!data.foundInSystem) {
       showMessage(
         queryImageResult,
-        `Detected plate: ${plate}. This plate is not registered in Parallax.`,
+        `Detected plate: ${plateTag} This plate is not registered in Parallax.`,
         "error"
       );
       return;
@@ -1491,7 +1555,7 @@ async function handleQueryImageSubmit(event) {
     if (data.blacklisted) {
       showMessage(
         queryImageResult,
-        `Detected plate: ${plate}. This plate is registered and currently blacklisted.`,
+        `Detected plate: ${plateTag} This plate is registered and currently blacklisted.`,
         "error"
       );
       return;
@@ -1499,7 +1563,7 @@ async function handleQueryImageSubmit(event) {
 
     showMessage(
       queryImageResult,
-      `Detected plate: ${plate}. This plate is registered and not blacklisted.`,
+      `Detected plate: ${plateTag} This plate is registered and not blacklisted.`,
       "success"
     );
   } catch (error) {
@@ -1761,7 +1825,7 @@ function renderVehiclesTableHeader(adminView) {
 
   const columns = [
     "License Plate",
-    "Manufacturer",
+    "Make",
     "Model",
     "Year",
     "Blacklist Status",
@@ -1895,7 +1959,13 @@ function renderRegisteredVehicles(vehicles, adminView) {
   sorted.forEach((item) => {
     const row = document.createElement("tr");
     const status = item.blacklisted ? "Blacklisted" : "Not blacklisted";
-    const cells = [item.licenseNumber, item.make || "", item.model || "", item.year || "", status];
+    const cells = [
+      item.licenseNumber,
+      item.make || "",
+      item.model || "",
+      item.year || "",
+      status,
+    ];
 
     if (adminView) {
       cells.push(item.ownerEmail || item.ownerUsername || "");
@@ -1905,36 +1975,65 @@ function renderRegisteredVehicles(vehicles, adminView) {
     cells.forEach((value, index) => {
       const cell = document.createElement("td");
       cell.textContent = value;
+    
       if (adminView && (index === 5 || index === 6)) {
         cell.classList.add("owner-cell");
+        if (value) {
+          cell.title = value;
+        }
       }
+    
       row.appendChild(cell);
     });
 
     const actionCell = document.createElement("td");
+    actionCell.classList.add("vehicles-actions-cell");
+
+    const actionsWrapper = document.createElement("div");
+    actionsWrapper.className = "vehicles-actions";
+
     if (adminView) {
       const toggleButton = document.createElement("button");
-      toggleButton.textContent = item.blacklisted ? "Remove from blacklist" : "Blacklist";
+      toggleButton.type = "button";
+      toggleButton.className = item.blacklisted
+        ? "table-action-button table-action-button--secondary"
+        : "table-action-button table-action-button--danger";
+      toggleButton.textContent = item.blacklisted
+        ? "Unblacklist"
+        : "Blacklist";
       toggleButton.addEventListener("click", () =>
         toggleBlacklist(item.licenseNumber, !item.blacklisted)
       );
-      actionCell.appendChild(toggleButton);
+      actionsWrapper.appendChild(toggleButton);
 
       const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className =
+        "table-action-button table-action-button--ghost";
       removeButton.textContent = "Remove";
-      removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
-      actionCell.appendChild(removeButton);
+      removeButton.addEventListener("click", () =>
+        removeLicense(item.licenseNumber)
+      );
+      actionsWrapper.appendChild(removeButton);
     } else {
       const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className =
+        "table-action-button table-action-button--ghost";
       removeButton.textContent = "Remove";
-      removeButton.addEventListener("click", () => removeLicense(item.licenseNumber));
-      actionCell.appendChild(removeButton);
+      removeButton.addEventListener("click", () =>
+        removeLicense(item.licenseNumber)
+      );
+      actionsWrapper.appendChild(removeButton);
     }
+
+    actionCell.appendChild(actionsWrapper);
     row.appendChild(actionCell);
 
     vehiclesTableBody.appendChild(row);
   });
 }
+
 
 async function removeLicense(licenseNumber) {
   if (!currentUser) return;
@@ -2047,6 +2146,11 @@ if (resetBackLink) {
     showLoginView();
   });
 }
+
+refreshButton?.addEventListener("click", (event) => {
+  event.preventDefault();
+  clearAllMessagesAndForms();
+});
 
 registerForm.addEventListener("submit", handleRegister);
 loginForm.addEventListener("submit", handleLogin);
