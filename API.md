@@ -1,124 +1,190 @@
-# Parallax Backend API Documentation
+# Parallax API Contract (Phase 1)
 
-**Version:** Demo / Development  
-**Status:** Stable (HTTP contracts), internal persistence may evolve (SQLite planned)
+Status: Active (authoritative for Phase 1)
 
-This document defines the REST-style API exposed by the Parallax Java backend.  
-All APIs return JSON.  
-All dates and times are server-local unless otherwise noted.
-
----
-
-## 1. Overview
-
-The backend exposes endpoints for:
-
-- **Authentication & Accounts**
-- **Vehicle Management**
-- **Blacklist Management (admin only)**
-- **Query**
-- **System Health**
-
-The system is currently **stateless**:  
-The front-end includes a header such as:
-
-```
-X-User: <username>
-```
-
-to indicate the authenticated user.  
-In production, this will be replaced with secure sessions (JWT or server-side tokens).
-
-Admin account is configured statically in `AppConfig`.
+This document defines the target API contract for the Phase 1 migration to Spring Boot.
+All routes are rooted at `/api` and preserve the current path structure to avoid breaking
+the frontend migration. After stabilization, routes will be versioned under `/api/v1`.
 
 ---
 
-## 2. Authentication & Accounts
+## 1. Conventions
 
-### 2.1 Register
+### 1.1 Authentication
+- Access Token: `Authorization: Bearer <jwt>`
+- Access token is required for authenticated endpoints (unless marked as public)
+- Client must not send `username` in query/body for authentication; the server derives
+  identity from JWT `sub`
 
-**`POST /auth/register`**
+### 1.2 CSRF
+- All write operations (POST/PUT/PATCH/DELETE) require `X-CSRF-Token`
+- Double Submit Cookie is used. The server sets `XSRF-TOKEN` cookie and expects
+  the same value in the header.
 
-Create a new user account.
+### 1.3 Refresh Cookie
+- Refresh token is stored as HttpOnly cookie, rotation enabled
+- SameSite=Lax, Secure, Path=/api/auth/refresh
+- Cookie Domain is not set (host-only)
 
-**Request Body**
-
+### 1.4 Error Format (Standard)
 ```json
 {
-  "country": "CA",
-  "firstName": "Liam",
-  "lastName": "Frost",
-  "birthMonth": 1,
-  "birthDay": 15,
-  "birthYear": 2003,
-  "email": "liam@example.com",
-  "password": "Secret123",
-  "phoneCountry": "+1",
-  "phone": "6041234567",
-  "contactMethod": "text"
+  "success": false,
+  "errorCode": "SOME_CODE",
+  "message": "Human readable message"
 }
 ```
 
-**Response**
-
-```json
-{ "success": true }
-```
-
-**Errors:**
-
-- `400` missing/invalid fields
-- `409` account already exists
-
 ---
 
-### 2.2 Login
+## 2. Auth
 
-**`POST /auth/login`**
+### 2.1 Login
+`POST /api/auth/login`
 
-Authenticates the user.
-
-**Request Body**
-
+Request Body:
 ```json
 {
-  "username": "liam@example.com",
+  "identifier": "liam@example.com",
   "password": "Secret123"
 }
 ```
 
-**Response**
-
+Response:
 ```json
 {
   "success": true,
-  "username": "liam@example.com"
+  "accessToken": "<jwt>",
+  "expiresIn": 900,
+  "user": {
+    "id": "...",
+    "email": "liam@example.com",
+    "displayName": "Liam Frost",
+    "role": "USER"
+  }
 }
 ```
 
+Side Effects:
+- Sets refresh cookie
+- Creates refresh session record
+
 ---
 
-### 2.3 Get Current User Info
+### 2.2 Register
+`POST /api/auth/register`
 
-**`GET /account/me`**
-
-**Requires:**
-
-```
-X-User: <username>
-```
-
-**Response Example**
-
+Request Body:
 ```json
 {
-  "country": "CA",
+  "email": "liam@example.com",
+  "password": "Secret123",
   "firstName": "Liam",
   "lastName": "Frost",
+  "country": "CA",
+  "birthYear": 2003,
   "birthMonth": 1,
   "birthDay": 15,
-  "birthYear": 2003,
+  "phoneCountry": "+1",
+  "phone": "6041234567",
+  "contactMethod": "text"
+}
+```
+
+Response:
+```json
+{
+  "success": true,
+  "accessToken": "<jwt>",
+  "expiresIn": 900,
+  "user": {
+    "id": "...",
+    "email": "liam@example.com",
+    "displayName": "Liam Frost",
+    "role": "USER"
+  }
+}
+```
+
+Side Effects:
+- Sets refresh cookie
+- Creates refresh session record
+
+---
+
+### 2.3 Refresh
+`POST /api/auth/refresh`
+
+Request:
+- Refresh cookie (sent automatically with `credentials: include`)
+
+Response:
+```json
+{
+  "success": true,
+  "accessToken": "<jwt>",
+  "expiresIn": 900
+}
+```
+
+Side Effects:
+- Rotates refresh cookie
+- Updates refresh session (or creates a new session)
+
+---
+
+### 2.4 Logout (current session)
+`POST /api/auth/logout`
+
+Request:
+- Access token: `Authorization: Bearer <jwt>`
+- Client should send `credentials: include` so the refresh cookie can be cleared
+
+Response:
+```json
+{ "success": true }
+```
+
+Side Effects:
+- Revokes current session (by `sid` in access token)
+- Clears refresh cookie
+
+---
+
+### 2.5 Logout All
+`POST /api/auth/logout_all`
+
+Request:
+- Access token: `Authorization: Bearer <jwt>`
+- Client should send `credentials: include` so the refresh cookie can be cleared
+
+Response:
+```json
+{ "success": true }
+```
+
+Side Effects:
+- Revokes all sessions for the current user
+- Clears refresh cookie
+
+---
+
+## 3. Account
+
+### 3.1 Get Current User
+`GET /api/account/me`
+
+Response:
+```json
+{
   "email": "liam@example.com",
+  "displayName": "Liam Frost",
+  "firstName": "Liam",
+  "lastName": "Frost",
+  "country": "CA",
+  "birthYear": 2003,
+  "birthMonth": 1,
+  "birthDay": 15,
   "phoneCountry": "+1",
   "phone": "6041234567",
   "contactMethod": "text"
@@ -127,18 +193,10 @@ X-User: <username>
 
 ---
 
-### 2.4 Update Contact Info
+### 3.2 Update Contact Info
+`POST /api/account/contact`
 
-**`PUT /account/contact`**
-
-**Requires:**
-
-```
-X-User: <username>
-```
-
-**Request Body**
-
+Request Body:
 ```json
 {
   "email": "new@example.com",
@@ -148,68 +206,77 @@ X-User: <username>
 }
 ```
 
-**Response**
-
+Response:
 ```json
 { "success": true }
 ```
 
 ---
 
-### 2.5 Change Password
+### 3.3 Change Password
+`POST /api/account/password`
 
-**`PUT /account/password`**
-
-**Request Body**
-
+Request Body:
 ```json
 {
   "oldPassword": "Secret123",
   "newPassword": "NewPass456",
+  "confirmPassword": "NewPass456",
   "captcha": "ABCD"
 }
 ```
 
-**Response**
-
+Response:
 ```json
 { "success": true }
 ```
 
 ---
 
-### 2.6 Delete Account
+### 3.4 Delete Account
+`DELETE /api/account`
 
-**`DELETE /account`**
+Notes:
+- Admin accounts cannot be deleted.
 
-Admin account cannot be deleted.
+Request Body:
+```json
+{ "currentPassword": "Secret123" }
+```
 
-**Response**
-
+Response:
 ```json
 { "success": true }
 ```
 
----
-
-## 3. Vehicles
-
-All vehicle endpoints require:
-
-```
-X-User: <username>
-```
-
-Admins may list **all** vehicles.
+Side Effects:
+- Deletes user
+- Cascades to delete owned vehicles
+- Revokes all refresh sessions for the user
 
 ---
 
-### 3.1 List Vehicles
+## 4. Vehicles
 
-**`GET /vehicles`**
+### 4.1 List Vehicles
+`GET /api/vehicles`
 
-**Response Example:**
+Response (USER):
+```json
+{
+  "vehicles": [
+    {
+      "licenseNumber": "ABC1234",
+      "make": "Toyota",
+      "model": "Corolla",
+      "year": 2020,
+      "blacklisted": false
+    }
+  ]
+}
+```
 
+Response (ADMIN):
 ```json
 {
   "vehicles": [
@@ -219,24 +286,21 @@ Admins may list **all** vehicles.
       "model": "Corolla",
       "year": 2020,
       "blacklisted": false,
-      "owner": "liam@example.com",
-      "phoneCountry": "+1",
-      "phone": "6041234567"
+      "owner": {
+        "email": "liam@example.com",
+        "phone": "+16041234567"
+      }
     }
   ]
 }
 ```
 
-Admin sees all vehicles; regular users only see their own.
-
 ---
 
-### 3.2 Add Vehicle
+### 4.2 Add Vehicle
+`POST /api/vehicles`
 
-**`POST /vehicles`**
-
-**Request Body**
-
+Request Body:
 ```json
 {
   "licenseNumber": "ABC1234",
@@ -246,202 +310,118 @@ Admin sees all vehicles; regular users only see their own.
 }
 ```
 
-**Response**
-
+Response:
 ```json
 { "success": true }
 ```
 
 ---
 
-### 3.3 Delete Vehicle
+### 4.3 Delete Vehicle
+`DELETE /api/vehicles`
 
-**`DELETE /vehicles`**
-
-**Request Body**
-
+Request Body:
 ```json
-{
-  "licenseNumber": "ABC1234"
-}
+{ "licenseNumber": "ABC1234" }
 ```
 
-**Response**
-
+Response:
 ```json
 { "success": true }
 ```
 
 ---
 
-## 4. Blacklist (Admin Only)
+### 4.4 Update Blacklist Status (ADMIN)
+`POST /api/vehicles/blacklist`
 
-Admin credentials are configured in `AppConfig`.
-
-Admin-only endpoints require:
-
-```
-X-User: <admin-email>
-```
-
----
-
-### 4.1 Update Blacklist Status
-
-**`POST /vehicles/blacklist`**
-
-**Request Body**
-
+Request Body:
 ```json
 {
-  "username": "liam@example.com",
   "licenseNumber": "ABC1234",
   "blacklisted": true
 }
 ```
 
-**Response**
-
+Response:
 ```json
-{
-  "success": true,
-  "vehicle": {
-    "licenseNumber": "ABC1234",
-    "blacklisted": true
-  }
-}
+{ "success": true }
 ```
 
 ---
 
 ## 5. Query
 
-### 5.1 Text Query (Public or Authenticated)
+### 5.1 Text Query (Public)
+`GET /api/vehicles/query?license=ABC1234`
 
-**`GET /vehicles/query?license=ABC1234`**
-
-**Response if found**
-
+Response (found):
 ```json
 {
+  "success": true,
   "found": true,
   "licenseNumber": "ABC1234",
   "blacklisted": false
 }
 ```
 
-**Response if not found**
-
+Response (not found):
 ```json
 {
-  "found": false
+  "success": true,
+  "found": false,
+  "licenseNumber": "ABC1234",
+  "blacklisted": false
 }
 ```
 
-No owner or personal information is returned.
-
 ---
 
-### 5.2 Image Recognition Query (Java → Python Service)
+### 5.2 Image Query (Public)
+`POST /api/vehicles/query-image`
 
-**`POST /vehicles/query/image`**
+Request:
+- Multipart form data
+- Field: `image`
 
-Form-data request:
-
-```
-file: <uploaded image>
-```
-
-**Java Backend Steps**
-
-1. Receives image upload
-
-2. Forwards to Python service:
-
-   ```
-   POST http://python-service/recognize
-   ```
-   
-   with image bytes
-
-3. Python returns:
-
-   ```json
-   { "plate": "ABC1234" }
-   ```
-
-4. Java performs the same blacklist lookup as text query
-
-5. Java returns:
-
-**Response**
-
+Response (plate found):
 ```json
 {
-  "plate": "ABC1234",
-  "blacklisted": true
+  "success": true,
+  "plateFound": true,
+  "licenseNumber": "ABC1234",
+  "foundInSystem": true,
+  "blacklisted": true,
+  "confidence": 0.92
 }
 ```
 
-**Errors:**
-
-- `400` no plate detected
-- `502` Python service unreachable
-
----
-
-## 6. Health Check
-
-**`GET /api/health`**
-
-**Response**
-
+Response (no plate):
 ```json
-{ "status": "ok" }
+{
+  "success": true,
+  "plateFound": false,
+  "message": "No readable license plate was found in the image."
+}
 ```
 
----
-
-## 7. Error Format (Standard)
-
-All errors follow:
-
+Error (OCR unavailable):
 ```json
 {
   "success": false,
-  "error": "MESSAGE"
+  "errorCode": "OCR_UNAVAILABLE",
+  "message": "Image recognition failed."
 }
 ```
 
-**Status codes:**
-
-- `400` invalid request
-- `401` not authenticated
-- `403` not authorized
-- `404` not found
-- `409` conflict (e.g., duplicate registration)
-- `500` internal error
-- `502` upstream error (Python recognition service)
-
 ---
 
-## 8. Future Backward-Compatible Expansions
+## 6. Health
 
-- SQLite-based repositories (`SQLiteUserRepository`, `SQLiteVehicleRepository`)
-  - No API changes required; only internal swap.
-- JWT authentication
-- Admin audit logs
-- Batch query / statistics endpoints
-- Multi-tenant environment support
+### 6.1 Health Check
+`GET /api/health`
 
----
-
-## 9. Versioning Strategy
-
-On stabilization, routes will move to:
-
+Response:
+```json
+{ "status": "ok" }
 ```
-/api/v1/<...>
-```
-
-Backward compatibility will be preserved for existing clients.

@@ -1,0 +1,35 @@
+server:
+  port: 8081
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: ${PARALLAX_DB_URL:jdbc:postgresql://localhost:5432/parallax}
+    username: ${PARALLAX_DB_USER:parallax}
+    password: ${PARALLAX_DB_PASSWORD:parallax}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    placeholders:
+      admin_email: ${PARALLAX_ADMIN_EMAIL:admin@parallax.local}
+      admin_password_hash: ${PARALLAX_ADMIN_PASSWORD_HASH:}
+
+parallax:
+  jwt:
+    issuer: ${PARALLAX_JWT_ISSUER:parallax}
+    audience: ${PARALLAX_JWT_AUDIENCE:parallax-api}
+    access-ttl-minutes: ${PARALLAX_JWT_ACCESS_TTL_MINUTES:15}
+    refresh-ttl-days: ${PARALLAX_JWT_REFRESH_TTL_DAYS:30}
+    private-key: ${PARALLAX_JWT_PRIVATE_KEY:}
+    public-key: ${PARALLAX_JWT_PUBLIC_KEY:}
+  security:
+    allowed-origins: ${PARALLAX_ALLOWED_ORIGINS:https://app.example.com}
+  ocr:
+    base-url: ${PARALLAX_OCR_BASE_URL:http://localhost:9000}

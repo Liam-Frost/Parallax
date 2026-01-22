@@ -1,0 +1,5 @@
+# Created at 2026-01-22T04:25:59.936
+Boot Manifest-JAR contains absolute paths in classpath 'C:\Projects\Parallax\backend-spring\target\test-classes'
+Hint: <argLine>-Djdk.net.URLClassPath.disableClassPathURLCheck=true</argLine>
+'other' has different root
+
